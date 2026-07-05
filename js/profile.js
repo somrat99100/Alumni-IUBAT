@@ -88,6 +88,7 @@ function renderJobHistory() {
 
   list.querySelectorAll(".remove-job").forEach((btn) => {
     btn.addEventListener("click", (e) => {
+      jobHistory = collectJobHistoryFromDom();
       const idx = parseInt(e.target.closest(".job-row").dataset.index, 10);
       jobHistory.splice(idx, 1);
       renderJobHistory();
@@ -96,6 +97,9 @@ function renderJobHistory() {
 }
 
 document.getElementById("addJobBtn").addEventListener("click", () => {
+  // Sync from the DOM first — otherwise any unsaved edits in existing rows
+  // get wiped when renderJobHistory() re-renders from the stale array.
+  jobHistory = collectJobHistoryFromDom();
   jobHistory.push({ title: "", org: "", startDate: "", endDate: "" });
   renderJobHistory();
 });

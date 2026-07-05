@@ -299,24 +299,25 @@ textarea { resize: vertical; min-height: 90px; }
 }
 .alumni-card {
   background: #fff; border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 20px; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
-  position: relative;
+  padding: 28px 20px 22px; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
+  position: relative; text-align: center;
+  display: flex; flex-direction: column; align-items: center;
 }
 .alumni-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lift); }
 .alumni-card .avatar {
-  width: 56px; height: 56px; border-radius: 50%; object-fit: cover;
-  background: var(--leaf-soft); margin-bottom: 12px;
+  width: 96px; height: 96px; border-radius: 50%; object-fit: cover;
+  background: var(--leaf-soft); margin-bottom: 16px;
+  border: 3px solid var(--leaf); padding: 3px;
 }
-.alumni-card h3 { margin-bottom: 2px; font-size: 1.05rem; padding-right: 60px; }
-.alumni-card .meta { font-family: var(--font-mono); font-size: 0.78rem; color: var(--moss-soft); }
-.alumni-card .job { font-size: 0.88rem; margin-top: 8px; color: var(--moss-soft); }
 .alumni-card .batch-badge {
-  position: absolute; top: 20px; right: 20px;
-  font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600;
-  background: var(--leaf-soft); color: var(--moss); padding: 3px 9px; border-radius: 999px;
+  font-family: var(--font-mono); font-size: 0.78rem; font-weight: 600;
+  color: var(--terracotta); letter-spacing: 0.03em; margin-bottom: 4px;
 }
+.alumni-card h3 { margin-bottom: 2px; font-size: 1.15rem; }
+.alumni-card .meta { font-family: var(--font-mono); font-size: 0.78rem; color: var(--moss-soft); }
+.alumni-card .job { font-size: 0.88rem; margin-top: 6px; color: var(--moss-soft); }
 .alumni-card .view-hint {
-  margin-top: 14px; font-size: 0.8rem; color: var(--leaf); font-weight: 600;
+  margin-top: 16px; font-size: 0.8rem; color: var(--leaf); font-weight: 600;
   display: flex; align-items: center; gap: 4px;
 }
 .alumni-card:hover .view-hint { color: var(--terracotta); }
@@ -329,7 +330,7 @@ textarea { resize: vertical; min-height: 90px; }
   background-size: 200% 100%;
   animation: shimmer 1.4s ease-in-out infinite;
 }
-.alumni-card.skeleton .avatar { width: 56px; height: 56px; border-radius: 50%; margin-bottom: 12px; }
+.alumni-card.skeleton .avatar { width: 96px; height: 96px; border-radius: 50%; margin-bottom: 16px; }
 .alumni-card.skeleton::after {
   content: ""; display: block; height: 14px; width: 70%; border-radius: 4px; margin-bottom: 8px;
   background: linear-gradient(90deg, var(--paper-dim) 25%, var(--border) 50%, var(--paper-dim) 75%);
@@ -406,7 +407,7 @@ textarea { resize: vertical; min-height: 90px; }
   justify-content: center;
   background-image:
     linear-gradient(180deg, rgba(19,28,20,0.72) 0%, rgba(19,28,20,0.58) 45%, rgba(19,28,20,0.82) 100%),
-    url("https://images.unsplash.com/photo-1745239853358-5ab62bc08af2?fm=jpg&q=70&w=2000&auto=format&fit=crop");
+    url("https://images.unsplash.com/photo-1520052203542-d3095f1b6cf0?fm=jpg&q=70&w=2000&auto=format&fit=crop");
   background-size: cover;
   background-position: center 35%;
   color: #fff;

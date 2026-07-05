@@ -74,8 +74,8 @@ function renderGrid(list) {
   empty.hidden = true;
   grid.innerHTML = list.map((a) => `
     <div class="alumni-card" data-uid="${a.uid}">
+      <img class="avatar" src="${a.photoUrl || "https://placehold.co/96x96/E4EEDF/1F2E22?text=%F0%9F%8C%B1"}" alt="" onerror="this.onerror=null;this.src='https://placehold.co/96x96/E4EEDF/1F2E22?text=%F0%9F%8C%B1';" />
       ${a.batch ? `<span class="batch-badge">Batch ${escapeHtml(a.batch)}</span>` : ""}
-      <img class="avatar" src="${a.photoUrl || "https://placehold.co/56x56/E4EEDF/1F2E22?text=%F0%9F%8C%B1"}" alt="" />
       <h3>${escapeHtml(a.fullName || "Unnamed")}</h3>
       ${a.jobTitle ? `<div class="job">${escapeHtml(a.jobTitle)}${a.org ? " · " + escapeHtml(a.org) : ""}</div>` : `<div class="meta">Agriculture Alumni</div>`}
       <div class="view-hint">View profile →</div>
@@ -115,7 +115,7 @@ async function openProfileModal(uid) {
   modal.innerHTML = `
     <button class="modal-close" id="closeProfileModal">✕</button>
     <div class="row gap-16">
-      <img class="avatar" style="width:64px;height:64px;" src="${alum.photoUrl || "https://placehold.co/64x64/E4EEDF/1F2E22?text=%F0%9F%8C%B1"}" alt="" />
+      <img class="avatar" style="width:64px;height:64px;" src="${alum.photoUrl || "https://placehold.co/64x64/E4EEDF/1F2E22?text=%F0%9F%8C%B1"}" alt="" onerror="this.onerror=null;this.src='https://placehold.co/64x64/E4EEDF/1F2E22?text=%F0%9F%8C%B1';" />
       <div>
         <h3 class="mb-0">${escapeHtml(alum.fullName || "Unnamed")}</h3>
         <div class="meta muted">Batch ${escapeHtml(alum.batch || "—")}</div>
