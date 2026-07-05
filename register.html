@@ -16,6 +16,7 @@
     <p class="eyebrow">Join the network</p>
     <h2>Register as Alumni</h2>
     <p class="muted">Your profile stays hidden from the public directory until an admin approves it.</p>
+    <p class="hint">Fields marked * are required. Only your photo and research area are optional.</p>
 
     <form id="registerForm">
       <div class="avatar-upload">
@@ -29,28 +30,28 @@
 
       <div class="form-row">
         <div class="field">
-          <label for="fullName">Full name</label>
+          <label for="fullName">Full name *</label>
           <input type="text" id="fullName" required />
         </div>
         <div class="field">
-          <label for="studentId">Student ID</label>
+          <label for="studentId">Student ID *</label>
           <input type="text" id="studentId" required />
         </div>
       </div>
 
       <div class="form-row">
         <div class="field">
-          <label for="email">Email</label>
+          <label for="email">Email *</label>
           <input type="email" id="email" required autocomplete="email" />
         </div>
         <div class="field">
-          <label for="batch">Batch</label>
+          <label for="batch">Batch *</label>
           <input type="text" id="batch" placeholder="e.g. 2018" required maxlength="4" pattern="\d{4}" inputmode="numeric" title="Enter a 4-digit batch year, e.g. 2018" />
         </div>
       </div>
 
       <div class="field">
-        <label for="password">Create a password</label>
+        <label for="password">Create a password *</label>
         <input type="password" id="password" minlength="6" required autocomplete="new-password" />
         <p class="hint">At least 6 characters.</p>
       </div>
