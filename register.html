@@ -44,8 +44,8 @@
           <input type="email" id="email" required autocomplete="email" />
         </div>
         <div class="field">
-          <label for="batch">Batch year</label>
-          <input type="text" id="batch" placeholder="e.g. 2018" required />
+          <label for="batch">Batch</label>
+          <input type="text" id="batch" placeholder="e.g. 2018" required maxlength="4" pattern="\d{4}" inputmode="numeric" title="Enter a 4-digit batch year, e.g. 2018" />
         </div>
       </div>
 
@@ -57,12 +57,12 @@
 
       <div class="form-row">
         <div class="field">
-          <label for="phone">Phone</label>
-          <input type="tel" id="phone" />
+          <label for="phone">Phone *</label>
+          <input type="tel" id="phone" required />
         </div>
         <div class="field">
-          <label for="whatsapp">WhatsApp</label>
-          <input type="tel" id="whatsapp" />
+          <label for="whatsapp">WhatsApp *</label>
+          <input type="tel" id="whatsapp" required />
         </div>
       </div>
 
@@ -205,11 +205,12 @@
 
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
+    let cred = null;
 
     try {
       // 1. Create the auth account
       setProgress(15, "Creating account…");
-      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      cred = await createUserWithEmailAndPassword(auth, email, password);
       const uid = cred.user.uid;
 
       const fullName = document.getElementById("fullName").value.trim();
@@ -264,6 +265,15 @@
     } catch (err) {
       hideProgress();
       delete resultOverlay.dataset.onCloseGoTo;
+
+      // If the Auth account was created but a later step failed, the person
+      // would otherwise be stuck with a login and no profile doc, forever
+      // seeing a blank "My Profile" page. Delete the partial account instead
+      // so they can cleanly register again.
+      if (cred && cred.user) {
+        try { await cred.user.delete(); } catch (_) { /* best effort */ }
+      }
+
       showResult({
         success: false,
         title: "Registration failed",

@@ -21,6 +21,19 @@
 
 <section class="section">
   <div class="container">
+
+    <!-- Shown only while status is "pending" -->
+    <div class="card center" id="pendingNotice" hidden>
+      <p style="font-size:2.5rem; margin-bottom:8px;">⏳</p>
+      <h2>Your profile is under review</h2>
+      <p class="muted" style="max-width:440px; margin:0 auto;">
+        An admin needs to approve your profile before it appears in the directory.
+        Please keep patience — once it's approved, you'll be able to see and edit
+        all your details here, including your photo.
+      </p>
+    </div>
+
+    <div id="profileFormSection">
     <div class="card">
       <div class="avatar-upload">
         <img id="avatarPreview" class="avatar-preview" src="https://placehold.co/72x72/E4EEDF/1F2E22?text=%F0%9F%8C%B1" alt="" />
@@ -37,19 +50,19 @@
             <input type="text" id="fullName" required />
           </div>
           <div class="field">
-            <label for="batch">Batch year</label>
-            <input type="text" id="batch" required />
+            <label for="batch">Batch</label>
+            <input type="text" id="batch" required maxlength="4" pattern="\d{4}" inputmode="numeric" title="Enter a 4-digit batch year, e.g. 2018" />
           </div>
         </div>
 
         <div class="form-row">
           <div class="field">
             <label for="jobTitle">Current job title</label>
-            <input type="text" id="jobTitle" />
+            <input type="text" id="jobTitle" required />
           </div>
           <div class="field">
             <label for="org">Current organization</label>
-            <input type="text" id="org" />
+            <input type="text" id="org" required />
           </div>
         </div>
 
@@ -67,27 +80,27 @@
         <div class="form-row">
           <div class="field">
             <label for="email">Email</label>
-            <input type="email" id="email" />
+            <input type="email" id="email" required />
           </div>
           <div class="field">
             <label for="phone">Phone</label>
-            <input type="tel" id="phone" />
+            <input type="tel" id="phone" required />
           </div>
         </div>
         <div class="form-row">
           <div class="field">
             <label for="whatsapp">WhatsApp</label>
-            <input type="tel" id="whatsapp" />
+            <input type="tel" id="whatsapp" required />
           </div>
         </div>
         <div class="form-row">
           <div class="field">
             <label for="facebookUrl">Facebook profile URL</label>
-            <input type="url" id="facebookUrl" />
+            <input type="url" id="facebookUrl" required />
           </div>
           <div class="field">
             <label for="linkedinUrl">LinkedIn profile URL</label>
-            <input type="url" id="linkedinUrl" />
+            <input type="url" id="linkedinUrl" required />
           </div>
         </div>
 
@@ -109,6 +122,7 @@
 
     <h2 class="mt-32">Contact Requests</h2>
     <div id="requestsList"><p class="muted"><span class="spinner"></span> Loading requests…</p></div>
+    </div>
   </div>
 </section>
 

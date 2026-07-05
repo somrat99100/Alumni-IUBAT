@@ -21,13 +21,34 @@ async function init() {
   ]);
 
   if (!publicSnap.exists()) {
-    toast("No profile found for this account.", "error");
+    document.getElementById("profileFormSection").hidden = true;
+    const pendingNotice = document.getElementById("pendingNotice");
+    pendingNotice.hidden = false;
+    pendingNotice.innerHTML = `
+      <p style="font-size:2.5rem; margin-bottom:8px;">⚠️</p>
+      <h2>No profile found for this account</h2>
+      <p class="muted" style="max-width:440px; margin:0 auto;">
+        Your login exists, but no profile was saved for it — this can happen if
+        registration was interrupted. Please contact the admin, or
+        <a href="register.html">register again</a> with a different email.
+      </p>`;
     return;
   }
   const data = publicSnap.data();
   const priv = privateSnap.exists() ? privateSnap.data() : {};
 
   renderStatusBanner(data.status);
+
+  const pendingNotice = document.getElementById("pendingNotice");
+  const formSection = document.getElementById("profileFormSection");
+
+  if (data.status === "pending") {
+    pendingNotice.hidden = false;
+    formSection.hidden = true;
+    return; // nothing else to populate while the form is hidden
+  }
+  pendingNotice.hidden = true;
+  formSection.hidden = false;
 
   document.getElementById("fullName").value = data.fullName || "";
   document.getElementById("batch").value = data.batch || "";
