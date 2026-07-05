@@ -112,6 +112,30 @@
   </div>
 </main>
 
+<!-- Progress modal: shown while the account is being created -->
+<div class="modal-overlay" id="progressModalOverlay" hidden>
+  <div class="modal" style="max-width:320px; text-align:center;">
+    <svg width="120" height="120" viewBox="0 0 120 120" style="margin:0 auto; display:block;">
+      <circle cx="60" cy="60" r="52" fill="none" stroke="var(--paper-dim, #E4EEDF)" stroke-width="10"/>
+      <circle id="progressCircle" cx="60" cy="60" r="52" fill="none" stroke="var(--accent, #6b9b5e)"
+        stroke-width="10" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="326.7"
+        transform="rotate(-90 60 60)" style="transition: stroke-dashoffset 0.4s ease;"/>
+      <text id="progressPercent" x="60" y="66" text-anchor="middle" font-size="24" font-weight="600" fill="var(--ink, #1F2E22)">0%</text>
+    </svg>
+    <p id="progressLabel" class="muted mt-16">Creating account…</p>
+  </div>
+</div>
+
+<!-- Result modal: success or failure, shown after submission finishes -->
+<div class="modal-overlay" id="resultModalOverlay" hidden>
+  <div class="modal" style="max-width:360px; text-align:center;">
+    <p id="resultIcon" style="font-size:42px; line-height:1; margin-bottom:4px;"></p>
+    <h3 id="resultTitle" style="margin-bottom:4px;"></h3>
+    <p id="resultMessage" class="muted"></p>
+    <button class="btn btn-primary mt-16" id="resultCloseBtn">OK</button>
+  </div>
+</div>
+
 <script type="module">
   import { auth, db } from "./js/firebase-config.js";
   import { createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -135,17 +159,56 @@
     }
   });
 
+  // ── Progress ring + result popup helpers ─────────────────────────────
+  const CIRCUMFERENCE = 326.7; // 2 * π * 52 (matches the circle's r=52 in the SVG)
+  const progressOverlay = document.getElementById("progressModalOverlay");
+  const progressCircle = document.getElementById("progressCircle");
+  const progressPercent = document.getElementById("progressPercent");
+  const progressLabel = document.getElementById("progressLabel");
+  const resultOverlay = document.getElementById("resultModalOverlay");
+
+  function setProgress(percent, label) {
+    const offset = CIRCUMFERENCE - (CIRCUMFERENCE * percent) / 100;
+    progressCircle.style.strokeDashoffset = offset;
+    progressPercent.textContent = `${percent}%`;
+    progressLabel.textContent = label;
+  }
+
+  function showProgress() {
+    setProgress(0, "Creating account…");
+    progressOverlay.hidden = false;
+  }
+
+  function hideProgress() {
+    progressOverlay.hidden = true;
+  }
+
+  function showResult({ success, title, message }) {
+    document.getElementById("resultIcon").textContent = success ? "✅" : "⚠️";
+    document.getElementById("resultTitle").textContent = title;
+    document.getElementById("resultMessage").textContent = message;
+    resultOverlay.hidden = false;
+  }
+
+  document.getElementById("resultCloseBtn").addEventListener("click", () => {
+    resultOverlay.hidden = true;
+    if (resultOverlay.dataset.onCloseGoTo) {
+      location.href = resultOverlay.dataset.onCloseGoTo;
+    }
+  });
+
   document.getElementById("registerForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const btn = document.getElementById("registerBtn");
     btn.disabled = true;
-    btn.textContent = "Creating account…";
+    showProgress();
 
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
 
     try {
       // 1. Create the auth account
+      setProgress(15, "Creating account…");
       const cred = await createUserWithEmailAndPassword(auth, email, password);
       const uid = cred.user.uid;
 
@@ -153,12 +216,14 @@
 
       // 2. Upload photo if provided (Cloudinary handles size/type limits server-side too).
       //    If no photo was uploaded, fall back to an auto-generated avatar.
+      setProgress(45, photoFile ? "Uploading photo…" : "Preparing profile…");
       let photoUrl = defaultAvatarFor(fullName);
       if (photoFile) {
         photoUrl = await uploadToCloudinary(photoFile);
       }
 
       // 3. Public profile doc (non-sensitive fields only)
+      setProgress(75, "Saving profile…");
       await setDoc(doc(db, "alumni", uid), {
         fullName,
         studentId: document.getElementById("studentId").value.trim(),
@@ -186,14 +251,35 @@
         linkedinUrl: document.getElementById("linkedinUrl").value.trim()
       });
 
-      toast("Account created! Your profile is pending admin review.", "success");
-      location.href = "my-profile.html";
+      setProgress(100, "Done!");
+      setTimeout(() => {
+        hideProgress();
+        resultOverlay.dataset.onCloseGoTo = "my-profile.html";
+        showResult({
+          success: true,
+          title: "Account created!",
+          message: "Your profile has been submitted and is pending admin review."
+        });
+      }, 300);
     } catch (err) {
-      toast(err.message || "Something went wrong. Please try again.", "error");
+      hideProgress();
+      delete resultOverlay.dataset.onCloseGoTo;
+      showResult({
+        success: false,
+        title: "Registration failed",
+        message: friendlyError(err)
+      });
       btn.disabled = false;
-      btn.textContent = "Create account & submit for review";
     }
   });
+
+  function friendlyError(err) {
+    const code = err.code || "";
+    if (code.includes("email-already-in-use")) return "That email is already registered. Try logging in instead.";
+    if (code.includes("weak-password")) return "Password is too weak — use at least 6 characters.";
+    if (code.includes("invalid-email")) return "That email address doesn't look valid.";
+    return err.message || "Something went wrong. Please try again.";
+  }
 </script>
 <script type="module" src="js/navbar-loader.js"></script>
 </body>
