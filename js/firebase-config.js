@@ -12,13 +12,15 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "PASTE_FROM_FIREBASE_CONSOLE",
-  authDomain: "REPLACE_ME.firebaseapp.com",
-  projectId: "REPLACE_ME",
-  storageBucket: "REPLACE_ME.appspot.com",
-  messagingSenderId: "REPLACE_ME",
-  appId: "REPLACE_ME"
+  apiKey: "AIzaSyBA7ZKs9FZ5qROMHucFtboPjkFX-00G9oE",
+  authDomain: "iubat-agri-alumni.firebaseapp.com",
+  projectId: "iubat-agri-alumni",
+  storageBucket: "iubat-agri-alumni.firebasestorage.app",
+  messagingSenderId: "304941777666",
+  appId: "1:304941777666:web:b5697d9826159e231eb81b",
+  measurementId: "G-LL3ZM6P8FR"
 };
 
 const app = initializeApp(firebaseConfig);
