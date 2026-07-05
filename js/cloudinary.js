@@ -3,8 +3,8 @@
 // since Firebase Storage now requires the paid Blaze plan.
 //
 // Before this works, fill in your own values below (see setup-guide.md §3b):
-const CLOUDINARY_CLOUD_NAME = "REPLACE_WITH_YOUR_CLOUD_NAME";
-const CLOUDINARY_UPLOAD_PRESET = "REPLACE_WITH_YOUR_UNSIGNED_PRESET";
+const CLOUDINARY_CLOUD_NAME = "db6r0up6r";
+const CLOUDINARY_UPLOAD_PRESET = "alumni";
 
 /**
  * Uploads a File object to Cloudinary and returns its public HTTPS URL.
