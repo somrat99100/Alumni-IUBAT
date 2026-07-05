@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Explore Alumni — IUBAT Agriculture Alumni Network</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Work+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div id="navbar-root"></div>
+
+<header class="section" style="padding-bottom:0;">
+  <div class="container">
+    <p class="eyebrow">Directory</p>
+    <h1>Explore Alumni</h1>
+    <p class="muted" style="max-width:560px;">Search approved profiles by name or batch year. Contact details unlock once an alum approves your request.</p>
+    <div class="field" style="max-width:420px; margin-top:20px;">
+      <input type="text" id="searchInput" placeholder="Search by name or batch year…" />
+    </div>
+  </div>
+</header>
+
+<section class="section">
+  <div class="container">
+    <div id="alumniGrid" class="alumni-grid">
+      <p class="muted">Loading alumni…</p>
+    </div>
+    <div id="emptyState" class="empty-state" hidden>
+      <p>No alumni match that search yet.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Profile modal -->
+<div class="modal-overlay" id="profileModalOverlay" hidden>
+  <div class="modal" id="profileModal"></div>
+</div>
+
+<!-- Request-contact modal -->
+<div class="modal-overlay" id="requestModalOverlay" hidden>
+  <div class="modal" id="requestModal"></div>
+</div>
+
+<footer class="footer">
+  <div class="footer-links">
+    <a href="index.html">Home</a>
+    <a href="department.html">Department</a>
+    <a href="alumni.html">Explore Alumni</a>
+    <a href="login.html">Login</a>
+    <a href="register.html">Register</a>
+  </div>
+  <p>© <span id="year"></span> IUBAT Agriculture Alumni Network</p>
+</footer>
+
+<script>document.getElementById("year").textContent = new Date().getFullYear();</script>
+<script type="module" src="js/navbar-loader.js"></script>
+<script type="module" src="js/alumni.js"></script>
+</body>
+</html>

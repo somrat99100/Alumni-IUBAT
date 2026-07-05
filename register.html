@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Register as Alumni — IUBAT Agriculture Alumni Network</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Work+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div id="navbar-root"></div>
+
+<main class="auth-shell">
+  <div class="auth-card wide card">
+    <p class="eyebrow">Join the network</p>
+    <h2>Register as Alumni</h2>
+    <p class="muted">Your profile stays hidden from the public directory until an admin approves it.</p>
+
+    <form id="registerForm">
+      <div class="avatar-upload">
+        <img id="avatarPreview" class="avatar-preview" src="https://placehold.co/72x72/E4EEDF/1F2E22?text=%F0%9F%8C%B1" alt="Avatar preview" />
+        <div>
+          <label class="btn btn-outline btn-sm" for="photoInput">Upload photo</label>
+          <input type="file" id="photoInput" accept="image/jpeg,image/png" hidden />
+          <p class="hint">JPG or PNG, up to 10MB.</p>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label for="fullName">Full name</label>
+          <input type="text" id="fullName" required />
+        </div>
+        <div class="field">
+          <label for="studentId">Student ID</label>
+          <input type="text" id="studentId" required />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" id="email" required autocomplete="email" />
+        </div>
+        <div class="field">
+          <label for="batch">Batch year</label>
+          <input type="text" id="batch" placeholder="e.g. 2018" required />
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="password">Create a password</label>
+        <input type="password" id="password" minlength="6" required autocomplete="new-password" />
+        <p class="hint">At least 6 characters.</p>
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label for="phone">Phone</label>
+          <input type="tel" id="phone" />
+        </div>
+        <div class="field">
+          <label for="whatsapp">WhatsApp</label>
+          <input type="tel" id="whatsapp" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label for="facebookUrl">Facebook profile URL</label>
+          <input type="url" id="facebookUrl" placeholder="https://facebook.com/…" />
+        </div>
+        <div class="field">
+          <label for="linkedinUrl">LinkedIn profile URL</label>
+          <input type="url" id="linkedinUrl" placeholder="https://linkedin.com/in/…" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label for="jobTitle">Current job title</label>
+          <input type="text" id="jobTitle" />
+        </div>
+        <div class="field">
+          <label for="org">Current organization</label>
+          <input type="text" id="org" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="researchArea">Research area / specialization</label>
+        <input type="text" id="researchArea" placeholder="e.g. Soil Science, Agribusiness" />
+      </div>
+
+      <div class="card" style="background:var(--paper-dim); box-shadow:none;">
+        <p class="eyebrow mb-0">Contact visibility</p>
+        <p class="hint mt-8">Email, Facebook and LinkedIn always require an approved request. Phone and WhatsApp are private by default — you can make them public below.</p>
+        <div class="toggle-row">
+          <span>Show phone publicly</span>
+          <label class="switch"><input type="checkbox" id="phonePublic" /><span class="track"></span></label>
+        </div>
+        <div class="toggle-row">
+          <span>Show WhatsApp publicly</span>
+          <label class="switch"><input type="checkbox" id="whatsappPublic" /><span class="track"></span></label>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-accent btn-block mt-24" id="registerBtn">Create account &amp; submit for review</button>
+      <p class="center muted mt-16">Already registered? <a href="login.html">Log in</a></p>
+    </form>
+  </div>
+</main>
+
+<script type="module">
+  import { auth, db, storage } from "./js/firebase-config.js";
+  import { createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+  import { toast } from "./js/main.js";
+
+  let photoFile = null;
+  const photoInput = document.getElementById("photoInput");
+  photoInput.addEventListener("change", () => {
+    photoFile = photoInput.files[0] || null;
+    if (photoFile) {
+      document.getElementById("avatarPreview").src = URL.createObjectURL(photoFile);
+    }
+  });
+
+  document.getElementById("registerForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById("registerBtn");
+    btn.disabled = true;
+    btn.textContent = "Creating account…";
+
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+
+    try {
+      // 1. Create the auth account
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      const uid = cred.user.uid;
+
+      // 2. Upload photo if provided (client-side size/type is just a UX hint —
+      //    Storage rules enforce the real 10MB/JPEG-PNG limit server-side)
+      let photoUrl = "";
+      if (photoFile) {
+        if (photoFile.size > 10 * 1024 * 1024) {
+          throw new Error("Photo must be under 10MB.");
+        }
+        const photoRef = ref(storage, `alumni-photos/${uid}/${photoFile.name}`);
+        await uploadBytes(photoRef, photoFile);
+        photoUrl = await getDownloadURL(photoRef);
+      }
+
+      // 3. Public profile doc (non-sensitive fields only)
+      await setDoc(doc(db, "alumni", uid), {
+        fullName: document.getElementById("fullName").value.trim(),
+        studentId: document.getElementById("studentId").value.trim(),
+        batch: document.getElementById("batch").value.trim(),
+        jobTitle: document.getElementById("jobTitle").value.trim(),
+        org: document.getElementById("org").value.trim(),
+        researchArea: document.getElementById("researchArea").value.trim(),
+        photoUrl,
+        jobHistory: [],
+        visibility: {
+          phone: document.getElementById("phonePublic").checked ? "public" : "private",
+          whatsapp: document.getElementById("whatsappPublic").checked ? "public" : "private"
+        },
+        status: "pending",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+
+      // 4. Private/sensitive fields, in the gated subcollection
+      await setDoc(doc(db, "alumni", uid, "private", "contact"), {
+        email,
+        phone: document.getElementById("phone").value.trim(),
+        whatsapp: document.getElementById("whatsapp").value.trim(),
+        facebookUrl: document.getElementById("facebookUrl").value.trim(),
+        linkedinUrl: document.getElementById("linkedinUrl").value.trim()
+      });
+
+      toast("Account created! Your profile is pending admin review.", "success");
+      location.href = "my-profile.html";
+    } catch (err) {
+      toast(err.message || "Something went wrong. Please try again.", "error");
+      btn.disabled = false;
+      btn.textContent = "Create account & submit for review";
+    }
+  });
+</script>
+<script type="module" src="js/navbar-loader.js"></script>
+</body>
+</html>
