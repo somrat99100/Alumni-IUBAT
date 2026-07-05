@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Profile — IUBAT Agriculture Alumni Network</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Work+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body data-auth="required">
+
+<div id="navbar-root"></div>
+
+<header class="section" style="padding-bottom:0;">
+  <div class="container">
+    <p class="eyebrow">Your account</p>
+    <h1>My Profile</h1>
+    <div id="statusBanner"></div>
+  </div>
+</header>
+
+<section class="section">
+  <div class="container">
+    <div class="card">
+      <div class="avatar-upload">
+        <img id="avatarPreview" class="avatar-preview" src="https://placehold.co/72x72/E4EEDF/1F2E22?text=%F0%9F%8C%B1" alt="" />
+        <div>
+          <label class="btn btn-outline btn-sm" for="photoInput">Change photo</label>
+          <input type="file" id="photoInput" accept="image/jpeg,image/png" hidden />
+        </div>
+      </div>
+
+      <form id="profileForm">
+        <div class="form-row">
+          <div class="field">
+            <label for="fullName">Full name</label>
+            <input type="text" id="fullName" required />
+          </div>
+          <div class="field">
+            <label for="batch">Batch year</label>
+            <input type="text" id="batch" required />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="field">
+            <label for="jobTitle">Current job title</label>
+            <input type="text" id="jobTitle" />
+          </div>
+          <div class="field">
+            <label for="org">Current organization</label>
+            <input type="text" id="org" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="researchArea">Research area / specialization</label>
+          <input type="text" id="researchArea" />
+        </div>
+
+        <h3 class="mt-24">Job History</h3>
+        <div id="jobHistoryList"></div>
+        <button type="button" class="btn btn-outline btn-sm" id="addJobBtn">+ Add job history entry</button>
+
+        <h3 class="mt-24">Private Contact Info</h3>
+        <p class="hint">Email, Facebook and LinkedIn are only ever shared once you approve a request.</p>
+        <div class="form-row">
+          <div class="field">
+            <label for="email">Email</label>
+            <input type="email" id="email" />
+          </div>
+          <div class="field">
+            <label for="phone">Phone</label>
+            <input type="tel" id="phone" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label for="whatsapp">WhatsApp</label>
+            <input type="tel" id="whatsapp" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label for="facebookUrl">Facebook profile URL</label>
+            <input type="url" id="facebookUrl" />
+          </div>
+          <div class="field">
+            <label for="linkedinUrl">LinkedIn profile URL</label>
+            <input type="url" id="linkedinUrl" />
+          </div>
+        </div>
+
+        <div class="card" style="background:var(--paper-dim); box-shadow:none;">
+          <p class="eyebrow mb-0">Contact visibility</p>
+          <div class="toggle-row">
+            <span>Show phone publicly</span>
+            <label class="switch"><input type="checkbox" id="phonePublic" /><span class="track"></span></label>
+          </div>
+          <div class="toggle-row">
+            <span>Show WhatsApp publicly</span>
+            <label class="switch"><input type="checkbox" id="whatsappPublic" /><span class="track"></span></label>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary mt-24" id="saveBtn">Save changes</button>
+      </form>
+    </div>
+
+    <h2 class="mt-32">Contact Requests</h2>
+    <div id="requestsList"><p class="muted"><span class="spinner"></span> Loading requests…</p></div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="footer-links">
+    <a href="index.html">Home</a>
+    <a href="department.html">Department</a>
+    <a href="alumni.html">Explore Alumni</a>
+  </div>
+  <p>© <span id="year"></span> IUBAT Agriculture Alumni Network</p>
+</footer>
+
+<script>document.getElementById("year").textContent = new Date().getFullYear();</script>
+<script type="module" src="js/firebase-config.js"></script>
+<script type="module" src="js/auth-guard.js"></script>
+<script type="module" src="js/navbar-loader.js"></script>
+<script type="module" src="js/profile.js"></script>
+</body>
+</html>

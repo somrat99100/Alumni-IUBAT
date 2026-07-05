@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Log in — IUBAT Agriculture Alumni Network</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Work+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div id="navbar-root"></div>
+
+<main class="auth-shell">
+  <div class="auth-card card">
+    <p class="eyebrow">Welcome back</p>
+    <h2>Log in</h2>
+    <form id="loginForm">
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" required autocomplete="email" />
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" required autocomplete="current-password" />
+      </div>
+      <button type="submit" class="btn btn-primary btn-block" id="loginBtn">Log in</button>
+      <p class="center mt-16">
+        <a href="#" id="forgotLink">Forgot password?</a>
+      </p>
+      <p class="center muted">No account yet? <a href="register.html">Register as alumni</a></p>
+    </form>
+  </div>
+</main>
+
+<script type="module">
+  import { auth } from "./js/firebase-config.js";
+  import {
+    signInWithEmailAndPassword,
+    sendPasswordResetEmail
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { toast } from "./js/main.js";
+
+  const params = new URLSearchParams(location.search);
+  const next = params.get("next");
+
+  document.getElementById("loginForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById("loginBtn");
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+    btn.disabled = true;
+    btn.textContent = "Logging in…";
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      location.href = next ? decodeURIComponent(next) : "my-profile.html";
+    } catch (err) {
+      toast(friendlyError(err), "error");
+      btn.disabled = false;
+      btn.textContent = "Log in";
+    }
+  });
+
+  document.getElementById("forgotLink").addEventListener("click", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("email").value.trim();
+    if (!email) {
+      toast("Enter your email above first, then click Forgot password.", "error");
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      toast("Password reset email sent.", "success");
+    } catch (err) {
+      toast(friendlyError(err), "error");
+    }
+  });
+
+  function friendlyError(err) {
+    const code = err.code || "";
+    if (code.includes("invalid-credential") || code.includes("wrong-password") || code.includes("user-not-found")) {
+      return "Incorrect email or password.";
+    }
+    if (code.includes("too-many-requests")) return "Too many attempts. Try again later.";
+    return "Something went wrong. Please try again.";
+  }
+</script>
+<script type="module" src="js/navbar-loader.js"></script>
+</body>
+</html>

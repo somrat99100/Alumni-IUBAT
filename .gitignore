@@ -1,0 +1,11 @@
+# Never commit your Firebase Admin service account key — it grants full
+# admin access to your project (bypasses all security rules).
+serviceAccountKey.json
+
+# Node
+node_modules/
+package-lock.json
+
+# OS/editor cruft
+.DS_Store
+.vscode/

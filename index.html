@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>IUBAT Agriculture Alumni Network</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Work+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div id="navbar-root"></div>
+
+<header class="hero">
+  <p class="eyebrow">IUBAT — Dept. of Agriculture</p>
+  <h1>Where every graduating class keeps growing together.</h1>
+  <p class="lead">A directory built by and for IUBAT Agriculture alumni — find batchmates, request an introduction, and see where the field has taken everyone.</p>
+  <div class="hero-actions">
+    <a href="alumni.html" class="btn btn-primary">Explore Alumni</a>
+    <a href="register.html" class="btn btn-outline">Register as Alumni</a>
+  </div>
+</header>
+
+<section class="section">
+  <div class="container">
+    <p class="eyebrow">Why this exists</p>
+    <h2>Built for one department, not a generic network.</h2>
+    <div class="feature-grid">
+      <div class="card">
+        <h3>🔍 Find your batch</h3>
+        <p class="muted">Search approved alumni profiles by name or batch year — no noise, just people who studied Agriculture at IUBAT.</p>
+      </div>
+      <div class="card">
+        <h3>🔒 Contact, gated by consent</h3>
+        <p class="muted">Email and socials stay private until an alum approves your request — you choose the reason: career advice, higher study, internship, or research.</p>
+      </div>
+      <div class="card">
+        <h3>🌾 Track the field's growth</h3>
+        <p class="muted">See job histories and research areas across batches — a living record of where an Agriculture degree from IUBAT leads.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="container center">
+    <p class="eyebrow">Get listed</p>
+    <h2>Every profile starts as a request, reviewed by the department admin.</h2>
+    <p class="muted" style="max-width:560px; margin:0 auto 24px;">Register once, fill in your batch and career details, and you'll appear in the directory as soon as it's approved.</p>
+    <a href="register.html" class="btn btn-accent">Register as Alumni</a>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="footer-links">
+    <a href="index.html">Home</a>
+    <a href="department.html">Department</a>
+    <a href="alumni.html">Explore Alumni</a>
+    <a href="login.html">Login</a>
+    <a href="register.html">Register</a>
+  </div>
+  <p>© <span id="year"></span> IUBAT Agriculture Alumni Network</p>
+</footer>
+
+<script>document.getElementById("year").textContent = new Date().getFullYear();</script>
+<script type="module" src="js/navbar-loader.js"></script>
+</body>
+</html>
