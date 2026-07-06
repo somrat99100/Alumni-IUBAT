@@ -37,13 +37,27 @@ async function init() {
   const data = publicSnap.data();
   const priv = privateSnap.exists() ? privateSnap.data() : {};
 
-  renderStatusBanner(data.status);
+  renderStatusBanner(data.status, data.everApproved);
 
   const pendingNotice = document.getElementById("pendingNotice");
   const formSection = document.getElementById("profileFormSection");
 
-  if (data.status === "pending") {
+  // Only hide the form for a brand-new profile that has NEVER been approved
+  // yet. Once a profile has been approved at least once, edits stay fully
+  // editable — saving just re-submits for review (see the submit handler
+  // below) without locking the person out of their own form.
+  const isFirstTimePending = data.status === "pending" && !data.everApproved;
+
+  if (isFirstTimePending) {
     pendingNotice.hidden = false;
+    pendingNotice.innerHTML = `
+      <p style="font-size:2.5rem; margin-bottom:8px;">⏳</p>
+      <h2>Your profile is under review</h2>
+      <p class="muted" style="max-width:440px; margin:0 auto;">
+        An admin needs to approve your profile before it appears in the directory.
+        Please keep patience — once it's approved, you'll be able to see and edit
+        all your details here, including your photo.
+      </p>`;
     formSection.hidden = true;
     return; // nothing else to populate while the form is hidden
   }
@@ -58,8 +72,8 @@ async function init() {
   document.getElementById("email").value = priv.email || "";
   document.getElementById("phone").value = priv.phone || "";
   document.getElementById("whatsapp").value = priv.whatsapp || "";
-  document.getElementById("facebookUrl").value = priv.facebookUrl || "";
-  document.getElementById("linkedinUrl").value = priv.linkedinUrl || "";
+  document.getElementById("facebookUrl").value = priv.facebookUrl || data.facebookUrl || "";
+  document.getElementById("linkedinUrl").value = priv.linkedinUrl || data.linkedinUrl || "";
   document.getElementById("phonePublic").checked = data.visibility?.phone === "public";
   document.getElementById("whatsappPublic").checked = data.visibility?.whatsapp === "public";
   if (data.photoUrl) document.getElementById("avatarPreview").src = data.photoUrl;
@@ -70,10 +84,15 @@ async function init() {
   loadIncomingRequests(uid);
 }
 
-function renderStatusBanner(status) {
+function renderStatusBanner(status, everApproved) {
   const banner = document.getElementById("statusBanner");
   const map = {
-    pending: { cls: "badge-pending", text: "Your profile is pending admin review — it isn't visible in the directory yet." },
+    pending: {
+      cls: "badge-pending",
+      text: everApproved
+        ? "Your latest changes are pending admin review. The directory still shows your last approved version until this is reviewed."
+        : "Your profile is pending admin review — it isn't visible in the directory yet."
+    },
     approved: { cls: "badge-approved", text: "Your profile is live in the directory." },
     rejected: { cls: "badge-rejected", text: "Your profile was not approved. Update your details and it will be reviewed again." }
   };
@@ -143,6 +162,24 @@ document.getElementById("photoInput").addEventListener("change", (e) => {
 document.getElementById("profileForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const btn = document.getElementById("saveBtn");
+
+  // Defensive validation, mirroring the HTML pattern attributes.
+  const batchVal = document.getElementById("batch").value.trim();
+  if (!/^\d{4}$/.test(batchVal)) {
+    toast("Batch must be exactly 4 digits, e.g. 2018.", "error");
+    return;
+  }
+  const fbVal = document.getElementById("facebookUrl").value.trim();
+  if (!/^https?:\/\/(www\.)?(facebook|fb)\.com\/.+/i.test(fbVal)) {
+    toast("Enter a real Facebook profile URL, e.g. https://facebook.com/yourname.", "error");
+    return;
+  }
+  const liVal = document.getElementById("linkedinUrl").value.trim();
+  if (!/^https?:\/\/(www\.)?linkedin\.com\/.+/i.test(liVal)) {
+    toast("Enter a real LinkedIn profile URL, e.g. https://linkedin.com/in/yourname.", "error");
+    return;
+  }
+
   btn.disabled = true;
   btn.textContent = "Saving…";
 
@@ -152,17 +189,31 @@ document.getElementById("profileForm").addEventListener("submit", async (e) => {
       photoUrl = await uploadToCloudinary(photoFile);
     }
 
+    const phoneVal = document.getElementById("phone").value.trim();
+    const whatsappVal = document.getElementById("whatsapp").value.trim();
+    const phonePublic = document.getElementById("phonePublic").checked;
+    const whatsappPublic = document.getElementById("whatsappPublic").checked;
+
     const updates = {
       fullName: document.getElementById("fullName").value.trim(),
-      batch: document.getElementById("batch").value.trim(),
+      batch: batchVal,
       jobTitle: document.getElementById("jobTitle").value.trim(),
       org: document.getElementById("org").value.trim(),
       researchArea: document.getElementById("researchArea").value.trim(),
+      facebookUrl: fbVal,
+      linkedinUrl: liVal,
+      publicPhone: phonePublic ? phoneVal : "",
+      publicWhatsapp: whatsappPublic ? whatsappVal : "",
       jobHistory: collectJobHistoryFromDom(),
       visibility: {
-        phone: document.getElementById("phonePublic").checked ? "public" : "private",
-        whatsapp: document.getElementById("whatsappPublic").checked ? "public" : "private"
+        phone: phonePublic ? "public" : "private",
+        whatsapp: whatsappPublic ? "public" : "private"
       },
+      // Any edit sends the profile back for admin review. The directory
+      // query only shows status === "approved", so the *previous* approved
+      // version disappears from public view the moment this saves, and the
+      // new version only reappears once an admin re-approves it.
+      status: "pending",
       updatedAt: new Date()
     };
     if (photoUrl) updates.photoUrl = photoUrl;
@@ -171,13 +222,15 @@ document.getElementById("profileForm").addEventListener("submit", async (e) => {
 
     await setDoc(doc(db, "alumni", uid, "private", "contact"), {
       email: document.getElementById("email").value.trim(),
-      phone: document.getElementById("phone").value.trim(),
-      whatsapp: document.getElementById("whatsapp").value.trim(),
-      facebookUrl: document.getElementById("facebookUrl").value.trim(),
-      linkedinUrl: document.getElementById("linkedinUrl").value.trim()
+      phone: phoneVal,
+      whatsapp: whatsappVal,
+      facebookUrl: fbVal,
+      linkedinUrl: liVal
     });
 
-    toast("Profile saved.", "success");
+    toast("Changes saved and submitted for admin review.", "success");
+    document.getElementById("statusBanner").innerHTML =
+      `<span class="badge badge-pending">pending</span> <span class="muted">Your latest changes are pending admin review. The directory still shows your last approved version until this is reviewed.</span>`;
   } catch (err) {
     toast(err.message || "Couldn't save changes.", "error");
     console.error(err);

@@ -96,11 +96,13 @@
         <div class="form-row">
           <div class="field">
             <label for="facebookUrl">Facebook profile URL *</label>
-            <input type="url" id="facebookUrl" required />
+            <input type="url" id="facebookUrl" required
+              pattern="https?:\/\/(www\.)?(facebook|fb)\.com\/.+" title="Enter a valid Facebook profile URL, e.g. https://facebook.com/yourname" />
           </div>
           <div class="field">
             <label for="linkedinUrl">LinkedIn profile URL *</label>
-            <input type="url" id="linkedinUrl" required />
+            <input type="url" id="linkedinUrl" required
+              pattern="https?:\/\/(www\.)?linkedin\.com\/.+" title="Enter a valid LinkedIn profile URL, e.g. https://linkedin.com/in/yourname" />
           </div>
         </div>
 

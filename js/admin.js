@@ -21,12 +21,15 @@ async function loadQueue(status) {
       const a = d.data();
       return `
         <div class="card mt-16">
-          <div class="row gap-16">
-            <img class="avatar" src="${a.photoUrl || "https://placehold.co/56x56/E4EEDF/1F2E22?text=%F0%9F%8C%B1"}" alt="" />
-            <div>
-              <h3 class="mb-0">${escapeHtml(a.fullName || "Unnamed")}</h3>
-              <div class="muted">Batch ${escapeHtml(a.batch || "—")} · Student ID ${escapeHtml(a.studentId || "—")}</div>
+          <div class="row" style="justify-content:space-between; align-items:flex-start;">
+            <div class="row gap-16">
+              <img class="avatar" style="width:56px;height:56px;" src="${a.photoUrl || "https://placehold.co/56x56/E4EEDF/1F2E22?text=%F0%9F%8C%B1"}" alt="" onerror="this.onerror=null;this.src='https://placehold.co/56x56/E4EEDF/1F2E22?text=%F0%9F%8C%B1';" />
+              <div>
+                <h3 class="mb-0">${escapeHtml(a.fullName || "Unnamed")}</h3>
+                <div class="muted">Batch ${escapeHtml(a.batch || "—")} · Student ID ${escapeHtml(a.studentId || "—")}</div>
+              </div>
             </div>
+            <span class="badge badge-${status}">${status}</span>
           </div>
           ${a.jobTitle ? `<p class="mt-16">${escapeHtml(a.jobTitle)}${a.org ? " at " + escapeHtml(a.org) : ""}</p>` : ""}
           ${status === "pending" ? `
@@ -51,7 +54,9 @@ async function loadQueue(status) {
 
 async function decide(uid, status) {
   try {
-    await updateDoc(doc(db, "alumni", uid), { status, updatedAt: new Date() });
+    const updates = { status, updatedAt: new Date() };
+    if (status === "approved") updates.everApproved = true;
+    await updateDoc(doc(db, "alumni", uid), updates);
     toast(`Marked as ${status}.`, "success");
     loadQueue(activeStatus);
   } catch (err) {

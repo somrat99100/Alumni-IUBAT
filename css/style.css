@@ -284,6 +284,13 @@ textarea { resize: vertical; min-height: 90px; }
   font-family: var(--font-mono); font-size: 0.72rem; color: var(--moss);
 }
 
+/* ---------- Avatar (base rule — anywhere a plain <img class="avatar"> is used,
+   e.g. the admin queue, without needing a parent .alumni-card) ---------- */
+.avatar {
+  width: 56px; height: 56px; border-radius: 50%; object-fit: cover;
+  background: var(--leaf-soft); flex-shrink: 0;
+}
+
 /* ---------- Alumni grid & cards ---------- */
 /* ---------- Alumni directory ---------- */
 .filter-bar {
@@ -361,7 +368,24 @@ textarea { resize: vertical; min-height: 90px; }
 .contact-row:last-child { border-bottom: none; }
 .contact-row .label { font-size: 0.85rem; color: var(--moss-soft); }
 .contact-row .value { font-family: var(--font-mono); font-size: 0.9rem; }
-.locked-value { filter: blur(3px); user-select: none; }
+.locked-value { color: var(--moss-soft); font-style: italic; }
+
+/* ---------- Social / contact action buttons (Facebook, LinkedIn, WhatsApp) ---------- */
+.social-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+.social-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border-radius: 999px; font-size: 0.88rem; font-weight: 600;
+  text-decoration: none; transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  border: 1px solid var(--border);
+}
+.social-btn-fb { background: #E7F0FE; color: #1858B8; }
+.social-btn-li { background: #E5F0EC; color: #0A5C36; }
+.social-btn-wa { background: #E3F6E8; color: #1F7A3D; }
+.social-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lift);
+  filter: brightness(0.97);
+}
 
 /* ---------- Job history rows ---------- */
 .job-row {

@@ -7,12 +7,12 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/f
 import { toast, escapeHtml } from "./main.js";
 
 const PURPOSES = [
-  { id: "higher_study", label: "Higher Study Guidance" },
-  { id: "career_advice", label: "Career Advice" },
-  { id: "internship", label: "Internship Opportunity" },
-  { id: "research", label: "Research Collaboration" },
-  { id: "job", label: "Job Opportunity" },
-  { id: "other", label: "Other" }
+  { id: "higher_study", label: "Higher Study Guidance", template: "Hi! I'm an IUBAT Agriculture student/alum looking for guidance on pursuing higher studies in your field. I'd love to hear about your experience and any advice you might have." },
+  { id: "career_advice", label: "Career Advice", template: "Hi! I'm an IUBAT Agriculture student/alum and I'd really appreciate some career advice from someone with your experience. Would you be open to a short chat?" },
+  { id: "internship", label: "Internship Opportunity", template: "Hi! I'm an IUBAT Agriculture student and I'm interested in internship opportunities in your area of work. I'd love to learn more if anything is available." },
+  { id: "research", label: "Research Collaboration", template: "Hi! I'm reaching out about potential research collaboration — your work looks closely related to something I'm working on. Would you be open to connecting?" },
+  { id: "job", label: "Job Opportunity", template: "Hi! I wanted to reach out regarding a job opportunity that might be a good fit. Would you be open to a conversation?" },
+  { id: "other", label: "Other", template: "Hi! I'm a fellow IUBAT Agriculture student/alum and would love to connect. Looking forward to hearing from you!" }
 ];
 
 const REJECT_COOLDOWN_DAYS = 30;
@@ -96,6 +96,44 @@ document.getElementById("batchFilter").addEventListener("change", (e) => {
   applyFilters();
 });
 
+// Looks up any existing contact request between the current user and `toUid`.
+// IMPORTANT: this uses a QUERY (not a direct doc-id get). A direct
+// getDoc(doc(db,"contactRequests", `${uid}_${toUid}`)) throws
+// "permission-denied" whenever that exact document doesn't exist yet,
+// because Firestore rules can't evaluate `resource.data...` against a null
+// resource — which was the cause of the profile modal getting stuck on
+// "Loading profile…" forever for any signed-in user who hadn't already sent
+// a request. A query with matching where() clauses just returns an empty
+// result set instead, which Firestore can verify against the rules safely.
+async function findExistingRequest(fromUid, toUid) {
+  try {
+    const q = query(
+      collection(db, "contactRequests"),
+      where("fromUid", "==", fromUid),
+      where("toUid", "==", toUid)
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    const d = snap.docs[0];
+    return { id: d.id, ...d.data() };
+  } catch (err) {
+    console.error("Couldn't check contact request status:", err);
+    return null;
+  }
+}
+
+// Fetches the private contact subcollection doc, if the caller is allowed to
+// (owner, admin, or an approved requester per the Firestore rules). Never
+// throws — a permission error here just means "not unlocked."
+async function fetchPrivateContact(uid) {
+  try {
+    const snap = await getDoc(doc(db, "alumni", uid, "private", "contact"));
+    return snap.exists() ? snap.data() : null;
+  } catch (err) {
+    return null;
+  }
+}
+
 async function openProfileModal(uid) {
   const overlay = document.getElementById("profileModalOverlay");
   const modal = document.getElementById("profileModal");
@@ -106,10 +144,20 @@ async function openProfileModal(uid) {
   if (!alum) { modal.innerHTML = "<p>Profile not found.</p>"; return; }
 
   let requestDoc = null;
-  if (currentUser) {
-    const reqId = `${currentUser.uid}_${uid}`;
-    const snap = await getDoc(doc(db, "contactRequests", reqId));
-    if (snap.exists()) requestDoc = { id: reqId, ...snap.data() };
+  let privateContact = null;
+
+  try {
+    if (currentUser) {
+      requestDoc = await findExistingRequest(currentUser.uid, uid);
+      const isOwner = currentUser.uid === uid;
+      const isApprovedRequester = requestDoc && requestDoc.status === "approved";
+      if (isOwner || isApprovedRequester) {
+        privateContact = await fetchPrivateContact(uid);
+      }
+    }
+  } catch (err) {
+    console.error(err);
+    // Don't let a contact-lookup failure block the whole profile from rendering.
   }
 
   modal.innerHTML = `
@@ -123,15 +171,30 @@ async function openProfileModal(uid) {
     </div>
     ${alum.jobTitle ? `<p class="mt-16"><strong>${escapeHtml(alum.jobTitle)}</strong>${alum.org ? " at " + escapeHtml(alum.org) : ""}</p>` : ""}
     ${alum.researchArea ? `<p class="muted">Research area: ${escapeHtml(alum.researchArea)}</p>` : ""}
+    ${renderSocialButtons(alum)}
     ${renderJobHistory(alum.jobHistory)}
     <h3 class="mt-24">Contact</h3>
-    <div id="contactSection">${renderContactSection(alum, requestDoc)}</div>
+    <div id="contactSection">${renderContactSection(alum, requestDoc, privateContact)}</div>
   `;
 
   document.getElementById("closeProfileModal").addEventListener("click", () => overlay.hidden = true);
 
   const requestBtn = modal.querySelector("#requestContactBtn");
   if (requestBtn) requestBtn.addEventListener("click", () => openRequestModal(alum));
+}
+
+// Facebook / LinkedIn are treated as always-public professional links —
+// they show as buttons regardless of contact-request status.
+function renderSocialButtons(alum) {
+  const buttons = [];
+  if (alum.facebookUrl) {
+    buttons.push(`<a class="social-btn social-btn-fb" href="${escapeHtml(alum.facebookUrl)}" target="_blank" rel="noopener">📘 Facebook</a>`);
+  }
+  if (alum.linkedinUrl) {
+    buttons.push(`<a class="social-btn social-btn-li" href="${escapeHtml(alum.linkedinUrl)}" target="_blank" rel="noopener">💼 LinkedIn</a>`);
+  }
+  if (buttons.length === 0) return "";
+  return `<div class="social-buttons mt-16">${buttons.join("")}</div>`;
 }
 
 function renderJobHistory(history) {
@@ -147,45 +210,91 @@ function renderJobHistory(history) {
   return `<h3 class="mt-24">Job History</h3>${rows}`;
 }
 
-function renderContactSection(alum, requestDoc) {
+function lockedRow(label) {
+  return `
+    <div class="contact-row">
+      <span class="label">${label}</span>
+      <span class="value locked-value">🔒 Private</span>
+    </div>`;
+}
+
+function contactRow(label, value, href) {
+  const inner = href
+    ? `<a href="${escapeHtml(href)}">${escapeHtml(value)}</a>`
+    : escapeHtml(value);
+  return `
+    <div class="contact-row">
+      <span class="label">${label}</span>
+      <span class="value">${inner}</span>
+    </div>`;
+}
+
+function whatsappRow(number) {
+  const digits = number.replace(/[^\d+]/g, "");
+  return `
+    <div class="contact-row">
+      <span class="label">WhatsApp</span>
+      <a class="social-btn social-btn-wa" href="https://wa.me/${digits.replace("+", "")}" target="_blank" rel="noopener">💬 Message on WhatsApp</a>
+    </div>`;
+}
+
+function renderContactSection(alum, requestDoc, privateContact) {
   const vis = alum.visibility || {};
   const rows = [];
 
-  // Public phone / whatsapp show directly
-  if (vis.phone === "public") {
-    rows.push(contactRow("Phone", alum.publicPhone || "Available", true));
+  // Phone: unlocked directly if the alum made it public; otherwise locked.
+  if (vis.phone === "public" && alum.publicPhone) {
+    rows.push(contactRow("Phone", alum.publicPhone, `tel:${alum.publicPhone}`));
+  } else {
+    rows.push(lockedRow("Phone"));
   }
-  if (vis.whatsapp === "public") {
-    rows.push(contactRow("WhatsApp", alum.publicWhatsapp || "Available", true));
+
+  // WhatsApp: unlocked directly as a one-tap chat button if made public.
+  if (vis.whatsapp === "public" && alum.publicWhatsapp) {
+    rows.push(whatsappRow(alum.publicWhatsapp));
+  } else {
+    rows.push(lockedRow("WhatsApp"));
   }
 
   if (!currentUser) {
-    rows.push(`<p class="muted mt-16">Email, Facebook and LinkedIn are private. <a href="login.html">Log in</a> to request contact.</p>`);
+    rows.push(lockedRow("Email"));
+    rows.push(`<p class="muted mt-16">Email is private. <a href="login.html">Log in</a> to request contact.</p>`);
     return rows.join("");
   }
 
   if (currentUser.uid === alum.uid) {
+    if (privateContact?.email) {
+      rows.push(contactRow("Email", privateContact.email, `mailto:${privateContact.email}`));
+    } else {
+      rows.push(lockedRow("Email"));
+    }
     rows.push(`<p class="muted mt-16">This is your own profile. Edit it from <a href="my-profile.html">My Profile</a>.</p>`);
     return rows.join("");
   }
 
   if (!requestDoc) {
+    rows.push(lockedRow("Email"));
     rows.push(`<p class="mt-16"><button class="btn btn-accent btn-sm" id="requestContactBtn">Request Contact</button></p>`);
     return rows.join("");
   }
 
   if (requestDoc.status === "pending") {
+    rows.push(lockedRow("Email"));
     rows.push(`<p class="mt-16"><span class="badge badge-pending">Request pending</span></p>`);
     return rows.join("");
   }
 
   if (requestDoc.status === "approved") {
-    rows.push(contactRow("Email", alum.contactUnlocked?.email || "Unlocked — see below", true));
-    rows.push(`<p class="hint">Full contact details are shared once you and the alum connect off-platform via the approved request.</p>`);
+    if (privateContact?.email) {
+      rows.push(contactRow("Email", privateContact.email, `mailto:${privateContact.email}`));
+    } else {
+      rows.push(lockedRow("Email"));
+    }
     return rows.join("");
   }
 
   if (requestDoc.status === "rejected") {
+    rows.push(lockedRow("Email"));
     const decidedAt = requestDoc.decidedAt?.toDate ? requestDoc.decidedAt.toDate() : new Date();
     const daysLeft = REJECT_COOLDOWN_DAYS - Math.floor((Date.now() - decidedAt.getTime()) / 86400000);
     if (daysLeft > 0) {
@@ -199,17 +308,10 @@ function renderContactSection(alum, requestDoc) {
   return rows.join("");
 }
 
-function contactRow(label, value, unlocked) {
-  return `
-    <div class="contact-row">
-      <span class="label">${label}</span>
-      <span class="value ${unlocked ? "" : "locked-value"}">${escapeHtml(value)}</span>
-    </div>`;
-}
-
 function openRequestModal(alum) {
   const overlay = document.getElementById("requestModalOverlay");
   const modal = document.getElementById("requestModal");
+
   modal.innerHTML = `
     <button class="modal-close" id="closeRequestModal">✕</button>
     <h3>Request contact with ${escapeHtml(alum.fullName || "this alum")}</h3>
@@ -226,12 +328,25 @@ function openRequestModal(alum) {
       </div>
       <div class="field">
         <label for="requestMessage">Message</label>
-        <textarea id="requestMessage" placeholder="Introduce yourself and say why you'd like to connect…" required></textarea>
+        <textarea id="requestMessage" required></textarea>
+        <p class="hint">A starting message is filled in for you — feel free to just edit it and send, or write your own.</p>
       </div>
       <button type="submit" class="btn btn-accent btn-block" id="sendRequestBtn">Send Request</button>
     </form>
   `;
   overlay.hidden = false;
+
+  const messageBox = document.getElementById("requestMessage");
+  const setTemplateFor = (purposeId) => {
+    const p = PURPOSES.find((x) => x.id === purposeId) || PURPOSES[PURPOSES.length - 1];
+    messageBox.value = p.template;
+  };
+  setTemplateFor(PURPOSES[0].id);
+
+  modal.querySelectorAll('input[name="purpose"]').forEach((radio) => {
+    radio.addEventListener("change", (e) => setTemplateFor(e.target.value));
+  });
+
   document.getElementById("closeRequestModal").addEventListener("click", () => overlay.hidden = true);
 
   document.getElementById("requestForm").addEventListener("submit", async (e) => {
