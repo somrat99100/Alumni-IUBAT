@@ -165,8 +165,8 @@ document.getElementById("profileForm").addEventListener("submit", async (e) => {
 
   // Defensive validation, mirroring the HTML pattern attributes.
   const batchVal = document.getElementById("batch").value.trim();
-  if (!/^\d{4}$/.test(batchVal)) {
-    toast("Batch must be exactly 4 digits, e.g. 2018.", "error");
+  if (!/^\d{3}$/.test(batchVal)) {
+    toast("Batch must be exactly 3 digits, e.g. 242.", "error");
     return;
   }
   const fbVal = document.getElementById("facebookUrl").value.trim();
@@ -174,8 +174,9 @@ document.getElementById("profileForm").addEventListener("submit", async (e) => {
     toast("Enter a real Facebook profile URL, e.g. https://facebook.com/yourname.", "error");
     return;
   }
+  // LinkedIn is optional — only validate the pattern if something was entered.
   const liVal = document.getElementById("linkedinUrl").value.trim();
-  if (!/^https?:\/\/(www\.)?linkedin\.com\/.+/i.test(liVal)) {
+  if (liVal && !/^https?:\/\/(www\.)?linkedin\.com\/.+/i.test(liVal)) {
     toast("Enter a real LinkedIn profile URL, e.g. https://linkedin.com/in/yourname.", "error");
     return;
   }

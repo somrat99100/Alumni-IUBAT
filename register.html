@@ -46,7 +46,7 @@
         </div>
         <div class="field">
           <label for="batch">Batch *</label>
-          <input type="text" id="batch" placeholder="e.g. 2018" required maxlength="4" pattern="\d{4}" inputmode="numeric" title="Enter a 4-digit batch year, e.g. 2018" />
+          <input type="text" id="batch" placeholder="e.g. 242" required maxlength="3" pattern="\d{3}" inputmode="numeric" title="Enter a 3-digit batch/trimester code, e.g. 242" />
         </div>
       </div>
 
@@ -74,8 +74,8 @@
             pattern="https?:\/\/(www\.)?(facebook|fb)\.com\/.+" title="Enter a valid Facebook profile URL, e.g. https://facebook.com/yourname" />
         </div>
         <div class="field">
-          <label for="linkedinUrl">LinkedIn profile URL *</label>
-          <input type="url" id="linkedinUrl" placeholder="https://linkedin.com/in/…" required
+          <label for="linkedinUrl">LinkedIn profile URL (optional)</label>
+          <input type="url" id="linkedinUrl" placeholder="https://linkedin.com/in/…"
             pattern="https?:\/\/(www\.)?linkedin\.com\/.+" title="Enter a valid LinkedIn profile URL, e.g. https://linkedin.com/in/yourname" />
         </div>
       </div>
@@ -208,8 +208,8 @@
     // guards against any browser/autofill edge case that bypasses native
     // constraint validation.
     const batchVal = document.getElementById("batch").value.trim();
-    if (!/^\d{4}$/.test(batchVal)) {
-      showResult({ success: false, title: "Check the batch field", message: "Batch must be exactly 4 digits, e.g. 2018." });
+    if (!/^\d{3}$/.test(batchVal)) {
+      showResult({ success: false, title: "Check the batch field", message: "Batch must be exactly 3 digits, e.g. 242." });
       return;
     }
     const fbVal = document.getElementById("facebookUrl").value.trim();
@@ -217,8 +217,10 @@
       showResult({ success: false, title: "Check the Facebook URL", message: "Enter a real Facebook profile URL, e.g. https://facebook.com/yourname." });
       return;
     }
+    // LinkedIn is optional at registration — only validate the pattern if
+    // something was actually entered.
     const liVal = document.getElementById("linkedinUrl").value.trim();
-    if (!/^https?:\/\/(www\.)?linkedin\.com\/.+/i.test(liVal)) {
+    if (liVal && !/^https?:\/\/(www\.)?linkedin\.com\/.+/i.test(liVal)) {
       showResult({ success: false, title: "Check the LinkedIn URL", message: "Enter a real LinkedIn profile URL, e.g. https://linkedin.com/in/yourname." });
       return;
     }

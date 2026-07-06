@@ -373,19 +373,22 @@ textarea { resize: vertical; min-height: 90px; }
 /* ---------- Social / contact action buttons (Facebook, LinkedIn, WhatsApp) ---------- */
 .social-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
 .social-btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 8px 16px; border-radius: 999px; font-size: 0.88rem; font-weight: 600;
-  text-decoration: none; transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
-  border: 1px solid var(--border);
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 9px 18px; border-radius: 999px; font-size: 0.88rem; font-weight: 700;
+  letter-spacing: 0.01em;
+  text-decoration: none; transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+  border: 1px solid transparent;
+  box-shadow: 0 1px 2px rgba(31, 46, 34, 0.08);
 }
-.social-btn-fb { background: #E7F0FE; color: #1858B8; }
-.social-btn-li { background: #E5F0EC; color: #0A5C36; }
-.social-btn-wa { background: #E3F6E8; color: #1F7A3D; }
+.social-btn-fb { background: linear-gradient(135deg, #EAF2FF, #DCEBFF); color: #1858B8; }
+.social-btn-li { background: linear-gradient(135deg, #E8F5EE, #DAF0E4); color: #0A5C36; }
+.social-btn-wa { background: linear-gradient(135deg, #E9FBEE, #DBF6E3); color: #1F7A3D; }
 .social-btn:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-lift);
-  filter: brightness(0.97);
+  filter: brightness(0.98);
 }
+.social-btn:active { transform: translateY(0); }
 
 /* ---------- Job history rows ---------- */
 .job-row {

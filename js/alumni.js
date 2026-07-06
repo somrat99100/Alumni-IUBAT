@@ -171,7 +171,6 @@ async function openProfileModal(uid) {
     </div>
     ${alum.jobTitle ? `<p class="mt-16"><strong>${escapeHtml(alum.jobTitle)}</strong>${alum.org ? " at " + escapeHtml(alum.org) : ""}</p>` : ""}
     ${alum.researchArea ? `<p class="muted">Research area: ${escapeHtml(alum.researchArea)}</p>` : ""}
-    ${renderSocialButtons(alum)}
     ${renderJobHistory(alum.jobHistory)}
     <h3 class="mt-24">Contact</h3>
     <div id="contactSection">${renderContactSection(alum, requestDoc, privateContact)}</div>
@@ -181,20 +180,6 @@ async function openProfileModal(uid) {
 
   const requestBtn = modal.querySelector("#requestContactBtn");
   if (requestBtn) requestBtn.addEventListener("click", () => openRequestModal(alum));
-}
-
-// Facebook / LinkedIn are treated as always-public professional links —
-// they show as buttons regardless of contact-request status.
-function renderSocialButtons(alum) {
-  const buttons = [];
-  if (alum.facebookUrl) {
-    buttons.push(`<a class="social-btn social-btn-fb" href="${escapeHtml(alum.facebookUrl)}" target="_blank" rel="noopener">📘 Facebook</a>`);
-  }
-  if (alum.linkedinUrl) {
-    buttons.push(`<a class="social-btn social-btn-li" href="${escapeHtml(alum.linkedinUrl)}" target="_blank" rel="noopener">💼 LinkedIn</a>`);
-  }
-  if (buttons.length === 0) return "";
-  return `<div class="social-buttons mt-16">${buttons.join("")}</div>`;
 }
 
 function renderJobHistory(history) {
@@ -229,6 +214,25 @@ function contactRow(label, value, href) {
     </div>`;
 }
 
+// Facebook / LinkedIn: always-public professional links, rendered as a
+// button (the URL itself is never shown as text — it's embedded in the
+// button's href). If the alum didn't provide one, shows "Not provided"
+// instead of hiding the row.
+function socialRow(label, url, cls, emoji) {
+  if (url) {
+    return `
+      <div class="contact-row">
+        <span class="label">${label}</span>
+        <a class="social-btn ${cls}" href="${escapeHtml(url)}" target="_blank" rel="noopener">${emoji} ${label}</a>
+      </div>`;
+  }
+  return `
+    <div class="contact-row">
+      <span class="label">${label}</span>
+      <span class="value muted">Not provided</span>
+    </div>`;
+}
+
 function whatsappRow(number) {
   const digits = number.replace(/[^\d+]/g, "");
   return `
@@ -241,6 +245,10 @@ function whatsappRow(number) {
 function renderContactSection(alum, requestDoc, privateContact) {
   const vis = alum.visibility || {};
   const rows = [];
+
+  // Facebook / LinkedIn: always public, shown first in the Contact list.
+  rows.push(socialRow("Facebook", alum.facebookUrl, "social-btn-fb", "📘"));
+  rows.push(socialRow("LinkedIn", alum.linkedinUrl, "social-btn-li", "💼"));
 
   // Phone: unlocked directly if the alum made it public; otherwise locked.
   if (vis.phone === "public" && alum.publicPhone) {
