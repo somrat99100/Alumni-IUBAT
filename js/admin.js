@@ -80,8 +80,8 @@ async function decide(uid, status) {
 // values (dashboard → Email Services / Email Templates / Account → API
 // Keys). The template just needs to expect {{to_email}} and {{to_name}}
 // variables. The public key is set via emailjs.init(...) in admin.html.
-const EMAILJS_SERVICE_ID = "YOUR_SERVICE_ID";
-const EMAILJS_TEMPLATE_ID = "YOUR_TEMPLATE_ID";
+const EMAILJS_SERVICE_ID = "service_axm0jjz";
+const EMAILJS_TEMPLATE_ID = "template_bumd2ed";
 
 async function notifyApproval(uid) {
   try {
