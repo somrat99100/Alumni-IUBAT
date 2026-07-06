@@ -436,7 +436,7 @@ textarea { resize: vertical; min-height: 90px; }
     linear-gradient(180deg, rgba(19,28,20,0.72) 0%, rgba(19,28,20,0.58) 45%, rgba(19,28,20,0.82) 100%),
     url("https://res.cloudinary.com/db6r0up6r/image/upload/v1783349476/ChatGPT_Image_Jul_6_2026_08_43_59_PM_iokuuy.png");
   background-size: cover;
-  background-position: center 35%;
+  background-position: center 30%;
   color: #fff;
 }
 .hero::before {
@@ -447,7 +447,7 @@ textarea { resize: vertical; min-height: 90px; }
 }
 .hero .eyebrow { color: var(--leaf-soft); }
 .hero h1 { color: #fff; }
-.hero p.lead { color: rgba(255,255,255,0.88); }
+.hero p.lead { color: #fff; }
 .hero .btn-outline { color: #fff; border-color: rgba(255,255,255,0.55); }
 .hero .btn-outline:hover { border-color: #fff; background: rgba(255,255,255,0.1); }
 .hero-emoji {
