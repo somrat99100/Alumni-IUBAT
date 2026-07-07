@@ -136,9 +136,8 @@ a:hover { text-decoration: underline; }
 .nav-brand .mark {
   width: 34px; height: 34px;
   border-radius: 50%;
-  background: var(--leaf-soft);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.1rem;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 .nav-links {
   display: flex;
@@ -231,41 +230,29 @@ textarea { resize: vertical; min-height: 90px; }
   padding: 10px 0;
 }
 .switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
-.switch input { opacity: 0; width: 0; height: 0; }
-.switch .track {
-  position: absolute; inset: 0; background: var(--border);
-  border-radius: 999px; cursor: pointer; transition: background 0.2s;
+.switch input { display: none; }
+.switch-slider {
+  position: absolute; cursor: pointer; inset: 0;
+  background: var(--leaf-soft); border-radius: 12px;
+  transition: background 0.25s ease;
 }
-.switch .track::before {
-  content: ""; position: absolute; height: 18px; width: 18px;
-  left: 3px; top: 3px; background: #fff; border-radius: 50%;
-  transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+.switch-slider::before {
+  content: ""; position: absolute; top: 2px; left: 2px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: #fff; transition: transform 0.25s ease;
 }
-.switch input:checked + .track { background: var(--leaf); }
-.switch input:checked + .track::before { transform: translateX(20px); }
+.switch input:checked + .switch-slider { background: var(--leaf); }
+.switch input:checked + .switch-slider::before { transform: translateX(20px); }
 
-/* ---------- Radio group (purpose selector) ---------- */
-.radio-group { display: flex; flex-direction: column; gap: 10px; }
-.radio-option {
-  display: flex; align-items: center; gap: 10px;
-  border: 1.5px solid var(--border); border-radius: var(--radius-sm);
-  padding: 10px 14px; cursor: pointer; transition: border-color 0.15s;
-}
-.radio-option:hover { border-color: var(--leaf); }
-.radio-option input:checked ~ span { font-weight: 600; }
-.radio-option:has(input:checked) { border-color: var(--leaf); background: var(--leaf-soft); }
-
-/* ---------- Badges / pills / labels ---------- */
+/* ---------- Badge system ---------- */
 .badge {
   display: inline-flex; align-items: center; gap: 6px;
-  font-family: var(--font-mono); font-size: 0.72rem;
-  letter-spacing: 0.04em; text-transform: uppercase;
   padding: 4px 10px; border-radius: 999px;
+  font-family: var(--font-mono); font-size: 0.72rem; font-weight: 700;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  background: var(--leaf-soft); color: var(--leaf);
 }
-.badge-public { background: var(--leaf-soft); color: var(--moss); }
-.badge-pending { background: var(--terracotta-soft); color: var(--terracotta); }
-.badge-approved { background: var(--leaf-soft); color: var(--leaf); }
-.badge-rejected { background: var(--danger-soft); color: var(--danger); }
+.badge-accent { background: var(--terracotta-soft); color: var(--terracotta); }
 .badge-locked { background: var(--paper-dim); color: var(--moss-soft); }
 
 .growth-ring {
