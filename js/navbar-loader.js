@@ -9,7 +9,8 @@ const NAV_HTML = `
 <nav class="navbar">
   <div class="navbar-inner">
     <a href="index.html" class="nav-brand">
-      <span class="mark">🌱</span> IUBAT Agri Alumni
+      <img src="https://res.cloudinary.com/db6r0up6r/image/upload/w_68,h_68,c_fill,q_auto,f_auto/v1783437577/logo_qpv3nd.jpg" alt="IUBAT Agriculture Alumni" class="mark" />
+      IUBAT Agri Alumni
     </a>
     <button class="nav-toggle" aria-label="Toggle menu" id="navToggle">☰</button>
     <div class="nav-links" id="navLinks">
