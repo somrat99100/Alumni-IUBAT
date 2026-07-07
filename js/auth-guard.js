@@ -24,7 +24,7 @@ onAuthStateChanged(auth, async (user) => {
       return;
     }
     if (level === "admin") {
-      const adminDoc = await getDoc(doc(db, "admins", user.uid));
+      const adminDoc = await getDoc(doc(db, "admin", user.uid));
       if (!adminDoc.exists()) {
         location.href = "index.html";
         return;
