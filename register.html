@@ -147,10 +147,9 @@
   import { toast } from "./js/main.js";
 
   // Shown in the directory/profile whenever someone doesn't upload their own photo —
-  // generates a stable, initials-based avatar unique to each person's name.
+  // uses a fixed default avatar image hosted on Cloudinary.
   function defaultAvatarFor(name) {
-    const seed = encodeURIComponent(name || "IUBAT Alumni");
-    return `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundColor=6b9b5e&textColor=ffffff`;
+    return "https://res.cloudinary.com/db6r0up6r/image/upload/v1783349169/ChatGPT_Image_Jul_6_2026_08_45_32_PM_u8dcdf.png";
   }
 
   let photoFile = null;
@@ -241,7 +240,7 @@
       const fullName = document.getElementById("fullName").value.trim();
 
       // 2. Upload photo if provided (Cloudinary handles size/type limits server-side too).
-      //    If no photo was uploaded, fall back to an auto-generated avatar.
+      //    If no photo was uploaded, fall back to the default avatar image.
       setProgress(45, photoFile ? "Uploading photo…" : "Preparing profile…");
       let photoUrl = defaultAvatarFor(fullName);
       if (photoFile) {
