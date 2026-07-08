@@ -1,7 +1,7 @@
 // js/alumni.js
 import { auth, db } from "./firebase-config.js";
 import {
-  collection, query, where, getDocs, doc, getDoc, setDoc, serverTimestamp
+  collection, query, where, getDocs, doc, getDoc, setDoc, addDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { toast, escapeHtml } from "./main.js";
@@ -353,6 +353,35 @@ function renderContactSection(alum, requestDoc, privateContact) {
   return rows.join("");
 }
 
+// Creates an in-app notification for the alum who just received a new
+// contact request, so they see it via the navbar bell without needing to
+// manually check my-profile.html. Mirrors notifyApproval() in profile.js.
+async function notifyNewRequest(toUid, reqId) {
+  try {
+    let senderName = currentUser.displayName || "A fellow alum";
+    try {
+      const senderSnap = await getDoc(doc(db, "alumni", currentUser.uid));
+      if (senderSnap.exists() && senderSnap.data().fullName) {
+        senderName = senderSnap.data().fullName;
+      }
+    } catch (_) {
+      // Fall back to the default name above if this lookup fails.
+    }
+
+    await addDoc(collection(db, "notifications"), {
+      toUid,
+      type: "contact_request_received",
+      aboutUid: currentUser.uid,
+      aboutName: senderName,
+      requestId: reqId,
+      read: false,
+      createdAt: serverTimestamp()
+    });
+  } catch (err) {
+    console.error("Couldn't create new-request notification:", err);
+  }
+}
+
 function openRequestModal(alum) {
   const overlay = document.getElementById("requestModalOverlay");
   const modal = document.getElementById("requestModal");
@@ -411,6 +440,11 @@ function openRequestModal(alum) {
         status: "pending",
         createdAt: serverTimestamp()
       });
+
+      // Best-effort: never let a notification hiccup undo or block the
+      // request that already succeeded above.
+      notifyNewRequest(alum.uid, reqId);
+
       toast("Request sent.", "success");
       overlay.hidden = true;
       document.getElementById("profileModalOverlay").hidden = true;
