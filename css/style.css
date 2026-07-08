@@ -530,3 +530,45 @@ textarea { resize: vertical; min-height: 90px; }
 .nav-open .nav-links { transform: translateY(0); }
 
 .filter-btn.active { background: var(--moss); color: var(--paper); border-color: var(--moss); }
+
+/* ── Floating WhatsApp help button (injected on every page by
+   js/navbar-loader.js) ──────────────────────────────────────────────── */
+.whatsapp-float {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  background: #25D366;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 50%;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.whatsapp-float:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 8px 22px rgba(0,0,0,0.32);
+  color: #fff;
+}
+.whatsapp-float svg {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+@media (max-width: 480px) {
+  .whatsapp-float {
+    width: 52px;
+    height: 52px;
+    right: 16px;
+    bottom: 16px;
+  }
+  .whatsapp-float svg {
+    width: 28px;
+    height: 28px;
+  }
+}

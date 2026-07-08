@@ -17,7 +17,7 @@
 //  - EmailJS dashboard → create a template with an {{otp_code}} variable
 //    (in addition to {{to_email}}/{{to_name}}) and paste its id below.
 const EMAILJS_SERVICE_ID = "service_axm0jjz";
-const EMAILJS_OTP_TEMPLATE_ID = "template_fmimny8"; // replace with your real OTP template id
+const EMAILJS_OTP_TEMPLATE_ID = "template_otp_code"; // replace with your real OTP template id
 
 function randomCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
