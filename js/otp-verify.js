@@ -1,38 +1,23 @@
 // js/otp-verify.js
 // Proves, before an account is ever created, that the person submitting
-// register.html actually controls the email address AND the phone number
-// they typed in — this is what stops someone from registering using a real
-// alum's contact info instead of their own.
+// register.html actually controls the email address they typed in — this
+// is what stops someone from registering using a real alum's email address
+// instead of their own.
 //
-// Email code: a random 6-digit code generated client-side and emailed via
-// EmailJS (same account as the admin-approval notification in js/admin.js,
-// but its own template — see setup-guide.md).
-// Phone code: a REAL SMS one-time code sent through Firebase Phone
-// Authentication. It runs on a SEPARATE, secondary Firebase App instance
-// (same project, independent Auth session) so that whatever temporary
-// session signInWithPhoneNumber() creates never touches the primary Auth
-// instance that register.html uses moments later for the real
-// createUserWithEmailAndPassword() call.
-
-import { app } from "./firebase-config.js";
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import {
-  getAuth, RecaptchaVerifier, signInWithPhoneNumber, signOut
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+// A random 6-digit code is generated client-side and emailed via EmailJS
+// (same account as the admin-approval notification in js/admin.js, but its
+// own template — see setup-guide.md).
+//
+// NOTE: phone/SMS verification was removed — Firebase Phone Auth requires
+// the project to be on the paid Blaze billing plan, which isn't in use
+// here. Phone/WhatsApp numbers are still collected and stored as before,
+// they're just no longer verified by SMS before account creation.
 
 // SETUP REQUIRED (see setup-guide.md):
-//  - Firebase Console → Authentication → Sign-in method → enable "Phone".
 //  - EmailJS dashboard → create a template with an {{otp_code}} variable
 //    (in addition to {{to_email}}/{{to_name}}) and paste its id below.
 const EMAILJS_SERVICE_ID = "service_axm0jjz";
 const EMAILJS_OTP_TEMPLATE_ID = "template_otp_code"; // replace with your real OTP template id
-
-let otpApp = null;
-function getOtpAuth() {
-  // Lazily create the secondary app on first use, reuse it after that.
-  if (!otpApp) otpApp = initializeApp(app.options, "otpVerifyApp");
-  return getAuth(otpApp);
-}
 
 function randomCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
@@ -42,32 +27,37 @@ async function sendEmailCode(email, fullName, code) {
   if (typeof emailjs === "undefined") {
     throw new Error("Couldn't reach the email verification service — check your connection and try again.");
   }
-  await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_OTP_TEMPLATE_ID, {
-    to_email: email,
-    to_name: fullName || "there",
-    otp_code: code
-  });
+  try {
+    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_OTP_TEMPLATE_ID, {
+      to_email: email,
+      to_name: fullName || "there",
+      otp_code: code
+    });
+  } catch (err) {
+    // EmailJS rejections come back as a plain {status, text} object, not a
+    // real Error — err.message is usually undefined for these, which is
+    // why failures used to fall through to a generic, unhelpful message.
+    // Surfacing err.text here means a bad template id / service id / a
+    // template missing the otp_code variable shows up immediately instead
+    // of just "couldn't send the code".
+    const detail = err?.text || err?.message || JSON.stringify(err);
+    console.error("EmailJS send failed:", err);
+    throw new Error(`Couldn't send the email code (${detail}). Check the EmailJS template/service ids.`);
+  }
 }
 
-function friendlyPhoneError(err) {
-  const code = err?.code || "";
-  if (code.includes("invalid-phone-number")) return "That phone number doesn't look valid for SMS delivery — check the country code and number.";
-  if (code.includes("too-many-requests")) return "Too many attempts — wait a bit before requesting another SMS code.";
-  if (code.includes("quota-exceeded")) return "SMS verification is temporarily unavailable — try again later.";
-  return "Couldn't send the SMS code. Check the phone number and try resending.";
-}
-
-// Wires up the "verify email + phone" modal already present in register.html
-// (element ids: otpModalOverlay, otpEmailCode, otpPhoneCode, otpRecaptcha,
-// otpStatus, otpError, otpConfirmBtn, otpResendBtn, otpCancelBtn) and
-// resolves once BOTH codes have been confirmed correct. Rejects if the
-// person cancels — callers should treat that as "stop, don't create the
-// account" rather than a real error.
+// Wires up the "verify email" modal already present in register.html
+// (element ids: otpModalOverlay, otpEmailCode, otpStatus, otpError,
+// otpConfirmBtn, otpResendBtn, otpCancelBtn) and resolves once the code has
+// been confirmed correct. Rejects if the person cancels — callers should
+// treat that as "stop, don't create the account" rather than a real error.
+//
+// `phone` is accepted but intentionally unused — kept in the call signature
+// so register.html doesn't need to change how it calls this function.
 export function verifyContactInfo({ email, fullName, phone }) {
   return new Promise((resolve, reject) => {
     const overlay = document.getElementById("otpModalOverlay");
     const emailInput = document.getElementById("otpEmailCode");
-    const phoneInput = document.getElementById("otpPhoneCode");
     const confirmBtn = document.getElementById("otpConfirmBtn");
     const cancelBtn = document.getElementById("otpCancelBtn");
     const resendBtn = document.getElementById("otpResendBtn");
@@ -75,8 +65,6 @@ export function verifyContactInfo({ email, fullName, phone }) {
     const statusEl = document.getElementById("otpStatus");
 
     let expectedEmailCode = null;
-    let confirmationResult = null;
-    let recaptchaVerifier = null;
     let settled = false;
 
     function showError(msg) {
@@ -87,14 +75,12 @@ export function verifyContactInfo({ email, fullName, phone }) {
       statusEl.textContent = msg;
     }
 
-    async function sendBoth() {
+    async function sendCode() {
       confirmBtn.disabled = true;
       resendBtn.disabled = true;
-      confirmationResult = null;
       showError("");
-      showStatus("Sending codes…");
+      showStatus("Sending code…");
       emailInput.value = "";
-      phoneInput.value = "";
 
       try {
         expectedEmailCode = randomCode();
@@ -107,64 +93,25 @@ export function verifyContactInfo({ email, fullName, phone }) {
         return;
       }
 
-      try {
-        const otpAuth = getOtpAuth();
-        // A fresh verifier every send — reusing one after a previous
-        // confirm/expiry throws, so tear down and rebuild the widget.
-        if (recaptchaVerifier) {
-          try { recaptchaVerifier.clear(); } catch (_) { /* ignore */ }
-        }
-        document.getElementById("otpRecaptcha").innerHTML = "";
-        recaptchaVerifier = new RecaptchaVerifier(otpAuth, "otpRecaptcha", { size: "invisible" });
-        confirmationResult = await signInWithPhoneNumber(otpAuth, phone, recaptchaVerifier);
-      } catch (err) {
-        showStatus("");
-        showError(friendlyPhoneError(err));
-        confirmBtn.disabled = false;
-        resendBtn.disabled = false;
-        return;
-      }
-
-      showStatus("Codes sent — check your email and SMS messages.");
+      showStatus("Code sent — check your email.");
       confirmBtn.disabled = false;
       resendBtn.disabled = false;
     }
 
-    async function onConfirm() {
+    function onConfirm() {
       showError("");
       const enteredEmailCode = emailInput.value.trim();
-      const enteredPhoneCode = phoneInput.value.trim();
-      if (!enteredEmailCode || !enteredPhoneCode) {
-        showError("Enter both codes to continue.");
+      if (!enteredEmailCode) {
+        showError("Enter the code to continue.");
         return;
       }
-      if (!confirmationResult) {
-        showError("Codes are still being sent — wait a moment and try again.");
+      if (!expectedEmailCode) {
+        showError("The code is still being sent — wait a moment and try again.");
         return;
       }
-
-      confirmBtn.disabled = true;
-      confirmBtn.textContent = "Verifying…";
 
       if (enteredEmailCode !== expectedEmailCode) {
-        showError("That email code doesn't match. Double-check it or resend.");
-        confirmBtn.disabled = false;
-        confirmBtn.textContent = "Confirm & create account";
-        return;
-      }
-
-      try {
-        // Real proof of SMS receipt — validated against Firebase's phone
-        // auth backend, not just a local string comparison like the email
-        // code above.
-        await confirmationResult.confirm(enteredPhoneCode);
-        // We only needed proof of receipt, not a session — sign the
-        // temporary phone-auth user straight back out.
-        await signOut(getOtpAuth());
-      } catch (err) {
-        showError("That SMS code doesn't match. Double-check it or resend.");
-        confirmBtn.disabled = false;
-        confirmBtn.textContent = "Confirm & create account";
+        showError("That code doesn't match. Double-check it or resend.");
         return;
       }
 
@@ -183,21 +130,18 @@ export function verifyContactInfo({ email, fullName, phone }) {
       overlay.hidden = true;
       confirmBtn.removeEventListener("click", onConfirm);
       cancelBtn.removeEventListener("click", onCancel);
-      resendBtn.removeEventListener("click", sendBoth);
+      resendBtn.removeEventListener("click", sendCode);
       confirmBtn.disabled = false;
       confirmBtn.textContent = "Confirm & create account";
-      if (recaptchaVerifier) {
-        try { recaptchaVerifier.clear(); } catch (_) { /* ignore */ }
-      }
     }
 
     confirmBtn.addEventListener("click", onConfirm);
     cancelBtn.addEventListener("click", onCancel);
-    resendBtn.addEventListener("click", sendBoth);
+    resendBtn.addEventListener("click", sendCode);
 
     overlay.hidden = false;
     showStatus("");
     showError("");
-    sendBoth();
+    sendCode();
   });
 }

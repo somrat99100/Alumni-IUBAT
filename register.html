@@ -166,33 +166,28 @@
 </div>
 
 <!-- Contact verification modal: shown after the form is submitted but
-     BEFORE the account is created. A code is sent to the email address and
-     a code is sent by SMS to the phone number just entered — the person has
-     to prove they actually received both before an account gets created
-     with that contact info. This is what stops someone from registering
-     using another person's email or phone number. -->
+     BEFORE the account is created. A code is sent to the email address just
+     entered — the person has to prove they actually received it before an
+     account gets created with that contact info. This is what stops
+     someone from registering using another person's email address.
+     (Phone/SMS verification was removed — it requires Firebase's paid
+     Blaze billing plan, which isn't in use here.) -->
 <div class="modal-overlay" id="otpModalOverlay" hidden>
   <div class="modal" style="max-width:420px;">
-    <h3>Verify your contact info</h3>
-    <p class="muted">We've sent a 6-digit code to your email and another by SMS to your phone. Enter both to confirm they're really yours.</p>
+    <h3>Verify your email</h3>
+    <p class="muted">We've sent a 6-digit code to your email. Enter it to confirm it's really yours.</p>
 
     <div class="field">
       <label for="otpEmailCode">Code sent to your email</label>
       <input type="text" id="otpEmailCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••" />
     </div>
-    <div class="field">
-      <label for="otpPhoneCode">Code sent by SMS to your phone</label>
-      <input type="text" id="otpPhoneCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••" />
-    </div>
-
-    <div id="otpRecaptcha"></div>
 
     <p class="hint" id="otpStatus" style="min-height:1.2em;"></p>
     <p class="hint" id="otpError" hidden style="color:var(--danger, #b3432b);"></p>
 
     <button type="button" class="btn btn-accent btn-block mt-8" id="otpConfirmBtn">Confirm &amp; create account</button>
     <div class="row" style="justify-content:space-between; margin-top:10px;">
-      <button type="button" class="btn btn-ghost btn-sm" id="otpResendBtn">Resend codes</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="otpResendBtn">Resend code</button>
       <button type="button" class="btn btn-ghost btn-sm" id="otpCancelBtn">Cancel</button>
     </div>
   </div>
