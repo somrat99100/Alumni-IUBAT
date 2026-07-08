@@ -30,6 +30,34 @@ const NAV_HTML = `
   </div>
 </nav>`;
 
+// ── Floating WhatsApp help button ──────────────────────────────────────
+// Shown on every page (any page that loads this script), bottom-right
+// corner. Opens a WhatsApp chat with Mizan (batch 242), the alumni
+// network's contact, with a short pre-filled message so people don't land
+// on a blank chat. Update WHATSAPP_NUMBER below if the number ever changes
+// (digits only, no "+", spaces, or leading zeros after the country code).
+const WHATSAPP_NUMBER = "8801753486065";
+const WHATSAPP_MESSAGE = "Hi, I need help with the IUBAT Alumni Network.";
+
+function injectWhatsAppButton() {
+  if (document.getElementById("whatsappFloatBtn")) return; // avoid double-injecting
+  const a = document.createElement("a");
+  a.id = "whatsappFloatBtn";
+  a.className = "whatsapp-float";
+  a.href = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  a.title = "Ask for any help — Mizan, Batch 242";
+  a.setAttribute("aria-label", "Chat with Mizan (Batch 242) on WhatsApp for help");
+  a.innerHTML = `
+    <svg viewBox="0 0 32 32" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <path d="M16.001 2.667c-7.363 0-13.334 5.97-13.334 13.333 0 2.352.615 4.66 1.784 6.687L2.667 29.333l6.79-1.78a13.28 13.28 0 0 0 6.544 1.714h.006c7.362 0 13.333-5.97 13.333-13.333 0-3.562-1.387-6.912-3.905-9.43a13.24 13.24 0 0 0-9.434-3.837zm0 24.4h-.005a11.05 11.05 0 0 1-5.633-1.542l-.404-.24-4.03 1.057 1.076-3.928-.263-.403a11.03 11.03 0 0 1-1.69-5.878c0-6.11 4.972-11.083 11.084-11.083 2.961 0 5.744 1.153 7.837 3.248a11.006 11.006 0 0 1 3.244 7.84c0 6.111-4.972 11.083-11.216 11.083v-.154zm6.077-8.297c-.333-.167-1.966-.97-2.271-1.08-.305-.111-.527-.167-.749.167s-.86 1.08-1.054 1.302-.389.25-.722.083-1.407-.518-2.68-1.653c-.99-.883-1.66-1.974-1.854-2.307s-.021-.514.146-.68c.15-.15.333-.389.5-.583.166-.194.222-.333.333-.556.111-.222.056-.417-.028-.583-.084-.167-.75-1.807-1.028-2.474-.27-.65-.545-.563-.75-.573-.194-.008-.417-.01-.639-.01s-.583.083-.889.417c-.305.333-1.166 1.14-1.166 2.78s1.194 3.226 1.36 3.448c.167.222 2.348 3.583 5.687 5.024.794.343 1.415.548 1.898.702.797.254 1.523.218 2.096.132.639-.096 1.966-.803 2.243-1.58.278-.777.278-1.442.194-1.58-.083-.14-.305-.222-.638-.389z"/>
+    </svg>
+    <span class="whatsapp-float-label">Ask Mizan (242) for help</span>`;
+  document.body.appendChild(a);
+}
+injectWhatsAppButton();
+
 const root = document.getElementById("navbar-root");
 if (root) {
   root.innerHTML = NAV_HTML;
