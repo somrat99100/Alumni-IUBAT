@@ -55,7 +55,7 @@ if (root) {
           </button>
           <div class="notif-panel" id="notifPanel" hidden>
             <p class="notif-panel-title">Notifications</p>
-            <div id="notifList"><p class="muted notif-empty">No notifications yet.</p></div>
+            <div id="notifList"><p class="muted notif-empty">Loading…</p></div>
           </div>
         </div>
         <a href="my-profile.html" class="btn btn-outline btn-sm">My Profile</a>
@@ -88,9 +88,14 @@ if (root) {
         orderBy("createdAt", "desc")
       );
       unsubscribeNotifications = onSnapshot(q, (snap) => {
+        console.log(`[notifications] received ${snap.docs.length} doc(s) for uid=${user.uid}`);
         renderNotifications(snap.docs.slice(0, 20));
       }, (err) => {
         console.error("Notification listener failed:", err);
+        const list = document.getElementById("notifList");
+        if (list) {
+          list.innerHTML = `<p class="muted notif-empty">Couldn't load notifications (${escapeHtml(err.code || "error")}). Check console.</p>`;
+        }
       });
     } else {
       authArea.innerHTML = `<a href="login.html" class="btn btn-outline btn-sm">Log in</a>`;
@@ -113,15 +118,31 @@ if (root) {
 
     list.innerHTML = docs.map((d) => {
       const n = d.data();
-      if (n.type !== "contact_approved") return "";
-      return `
-        <a class="notif-item ${n.read ? "" : "notif-unread"}" href="alumni.html?view=${encodeURIComponent(n.aboutUid)}" data-id="${d.id}">
-          <span class="notif-icon">✅</span>
-          <span>
-            <strong>${escapeHtml(n.aboutName || "An alum")}</strong> accepted your contact request.
-            <span class="notif-view">View now →</span>
-          </span>
-        </a>`;
+      const name = escapeHtml(n.aboutName || "An alum");
+
+      if (n.type === "contact_approved") {
+        return `
+          <a class="notif-item ${n.read ? "" : "notif-unread"}" href="alumni.html?view=${encodeURIComponent(n.aboutUid)}" data-id="${d.id}">
+            <span class="notif-icon">✅</span>
+            <span>
+              <strong>${name}</strong> accepted your contact request.
+              <span class="notif-view">View now →</span>
+            </span>
+          </a>`;
+      }
+
+      if (n.type === "contact_request_received") {
+        return `
+          <a class="notif-item ${n.read ? "" : "notif-unread"}" href="my-profile.html" data-id="${d.id}">
+            <span class="notif-icon">📩</span>
+            <span>
+              <strong>${name}</strong> sent you a contact request.
+              <span class="notif-view">Review it →</span>
+            </span>
+          </a>`;
+      }
+
+      return "";
     }).join("");
 
     list.querySelectorAll(".notif-item").forEach((el) => {
