@@ -1,10 +1,29 @@
 // js/alumni.js
-import { auth, db } from "./firebase-config.js";
+import { auth, app } from "./firebase-config.js";
+// NOTE: this page uses the Firestore LITE SDK, not the full one. This page
+// never uses onSnapshot — every read here is a one-time getDocs()/getDoc().
+// But the FULL Firestore SDK still opens a persistent streaming connection
+// (the "Listen/channel" WebChannel) internally for any operation, even a
+// single one-shot read — that's just how its transport layer works, it's
+// not limited to onSnapshot listeners. Googlebot's renderer can't sustain
+// that connection, so the read for the alumni grid was never completing
+// during Search Console's live test, leaving the page rendered empty and
+// getting the indexing request rejected.
+// Firestore Lite is a REST-only build (get/set/add/delete/query, no
+// onSnapshot, no offline cache) built for exactly this: one-shot reads in
+// environments — crawlers, SSR, low-connectivity — that can't hold a
+// persistent stream open. Since this page never needs realtime updates,
+// swapping just this page to Lite removes the Listen/channel call
+// entirely, without touching firebase-config.js's full `db` export that
+// navbar-loader.js/admin.js/profile.js still rely on for their live
+// notification listeners.
 import {
-  collection, query, where, getDocs, doc, getDoc, setDoc, deleteDoc, addDoc, serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  getFirestore, collection, query, where, getDocs, doc, getDoc, setDoc, deleteDoc, addDoc, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-lite.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { toast, escapeHtml } from "./main.js";
+
+const db = getFirestore(app);
 
 const PURPOSES = [
   { id: "higher_study", label: "Higher Study Guidance", template: "Hi! I'm an IUBAT Agriculture student/alum looking for guidance on pursuing higher studies in your field. I'd love to hear about your experience and any advice you might have." },

@@ -26,3 +26,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+// Exported so pages that don't need realtime listeners (e.g. alumni.js) can
+// spin up a Firestore Lite instance against the same app instead — see the
+// comment in alumni.js for why that matters for Googlebot indexing.
+export { app };
