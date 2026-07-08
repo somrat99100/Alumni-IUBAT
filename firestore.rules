@@ -1,0 +1,156 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // Defense-in-depth: even a hand-crafted SDK write (bypassing the UI
+    // forms entirely) has to satisfy this shape. Doesn't replace escaping
+    // on the render side — belt and suspenders.
+    function isValidProfile(data) {
+      return data.fullName is string && data.fullName.size() > 0 && data.fullName.size() < 120
+          && data.photoUrl is string && data.photoUrl.size() < 500
+          && data.batch is string && data.batch.matches('^[0-9]{3}$')
+          && (!('facebookUrl' in data) || data.facebookUrl == "" ||
+              (data.facebookUrl is string && data.facebookUrl.matches('^https?://(www\\.)?(facebook|fb)\\.com/.*')))
+          && (!('linkedinUrl' in data) || data.linkedinUrl == "" ||
+              (data.linkedinUrl is string && data.linkedinUrl.matches('^https?://(www\\.)?linkedin\\.com/.*')))
+          // previousApproved is a diff snapshot the client writes on the
+          // first edit after an approval (see js/profile.js) purely so the
+          // admin queue can show "what changed" — if present it just needs
+          // to be a map, no stricter shape required since it's read-only
+          // reference data, never trusted for authorization decisions.
+          && (!('previousApproved' in data) || data.previousApproved is map);
+    }
+
+    // Same idea, applied to the private/contact subcollection. This is the
+    // field the register/edit forms use <input type="email"> for, but that
+    // client-side check is trivially bypassed (devtools, or a direct SDK/
+    // REST write) — this is the check that actually can't be skipped.
+    // Email is required and must look like an email; phone/whatsapp, if
+    // present, must be digits (with an optional leading +) — this also
+    // covers numbers built from a country-code dropdown + local digits on
+    // the client (e.g. "+8801712345678"), since that's just a plain string
+    // by the time it reaches Firestore. facebookUrl/linkedinUrl here get
+    // the same domain check as the public doc, since they're duplicated
+    // into this subcollection too.
+    function isValidContact(data) {
+      return data.email is string
+          && data.email.matches('^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$')
+          && (!('phone' in data) || data.phone == "" ||
+              (data.phone is string && data.phone.matches('^\\+?[0-9]{7,15}$')))
+          && (!('whatsapp' in data) || data.whatsapp == "" ||
+              (data.whatsapp is string && data.whatsapp.matches('^\\+?[0-9]{7,15}$')))
+          && (!('facebookUrl' in data) || data.facebookUrl == "" ||
+              (data.facebookUrl is string && data.facebookUrl.matches('^https?://(www\\.)?(facebook|fb)\\.com/.*')))
+          && (!('linkedinUrl' in data) || data.linkedinUrl == "" ||
+              (data.linkedinUrl is string && data.linkedinUrl.matches('^https?://(www\\.)?linkedin\\.com/.*')));
+    }
+
+    match /alumni/{uid} {
+      // Public can only read APPROVED profiles; owner/admin can always read
+      allow read: if resource.data.status == "approved" || isOwner(uid) || isAdmin();
+
+      // Only the owner can create their own doc, it must start pending,
+      // and its fields must pass basic shape/format validation.
+      allow create: if isOwner(uid)
+                    && request.resource.data.status == "pending"
+                    && isValidProfile(request.resource.data);
+
+      // Admin can update anything (including status). The owner can update
+      // their own doc and resubmit for review after editing — meaning the
+      // owner IS allowed to flip status from "approved" or "rejected" back
+      // to "pending" (an edit going back for review), or leave status
+      // unchanged. The owner can never set status to "approved" themselves
+      // — only an admin write can do that. Owner edits must also pass
+      // validation.
+      allow update: if isAdmin()
+                    || (isOwner(uid)
+                        && isValidProfile(request.resource.data)
+                        && (
+                          request.resource.data.status == resource.data.status ||
+                          (resource.data.status in ["approved", "rejected"] &&
+                           request.resource.data.status == "pending")
+                        ));
+
+      allow delete: if isAdmin();
+
+      match /private/contact {
+        // Read allowed for: the owner, an admin, or someone with an approved request
+        allow read: if isOwner(uid) || isAdmin() ||
+          (isSignedIn() &&
+           exists(/databases/$(database)/documents/contactRequests/$(request.auth.uid + '_' + uid)) &&
+           get(/databases/$(database)/documents/contactRequests/$(request.auth.uid + '_' + uid)).data.status == "approved");
+        // Admin can write freely (e.g. manual corrections from the console
+        // path); the owner's own writes must pass isValidContact() — this
+        // is what stops an invalid/garbage email from ever being stored,
+        // regardless of what the client-side form did or didn't check.
+        allow write: if isAdmin() || (isOwner(uid) && isValidContact(request.resource.data));
+      }
+    }
+
+    match /contactRequests/{id} {
+      // fromUid creates it, must target someone else, must start pending.
+      allow create: if isSignedIn()
+                    && request.resource.data.fromUid == request.auth.uid
+                    && request.resource.data.toUid != request.auth.uid
+                    && request.resource.data.status == "pending";
+
+      allow read: if isSignedIn()
+                  && (resource.data.fromUid == request.auth.uid
+                      || resource.data.toUid == request.auth.uid
+                      || isAdmin());
+
+      // ONLY the recipient (toUid) can decide, only while pending, and only
+      // status/decidedAt may change. fromUid can never touch it after
+      // creating it — this is what stops self-approval.
+      allow update: if isAdmin()
+                    || (isSignedIn()
+                        && resource.data.toUid == request.auth.uid
+                        && resource.data.status == "pending"
+                        && request.resource.data.status in ["approved", "rejected"]
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status", "decidedAt"]));
+    }
+
+    match /admins/{uid} {
+      // Only the admin themself (via a get(), like auth-guard.js does) or
+      // another admin can read a given admins doc — no listing the whole
+      // collection to enumerate who's an admin.
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if false; // only editable manually from the Firebase console
+    }
+
+    match /notifications/{id} {
+      // The creator must always be creating a notification "about"
+      // themselves (aboutUid == auth.uid) — this covers both:
+      //  - "contact_approved": the approver notifies the requester
+      //  - "contact_request_received": the requester notifies the recipient
+      // Either way, nobody can forge a notification claiming to be about
+      // someone else, and nobody can spam a notification to themselves.
+      allow create: if isSignedIn()
+                    && request.resource.data.aboutUid == request.auth.uid
+                    && request.resource.data.toUid is string
+                    && request.resource.data.toUid != request.auth.uid
+                    && request.resource.data.type in ["contact_approved", "contact_request_received"]
+                    && request.resource.data.read == false;
+
+      // Only the recipient can read their own notifications.
+      allow read: if isSignedIn() && resource.data.toUid == request.auth.uid;
+
+      // Recipient can only flip "read" — nothing else changes.
+      allow update: if isSignedIn()
+                    && resource.data.toUid == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["read"]);
+
+      allow delete: if false;
+    }
+  }
+}

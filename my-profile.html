@@ -104,13 +104,19 @@
           </div>
           <div class="field">
             <label for="phone">Phone *</label>
-            <input type="tel" id="phone" required />
+            <div class="phone-group">
+              <select id="phoneCode" class="phone-code-select" aria-label="Phone country code"></select>
+              <input type="tel" id="phone" placeholder="1712345678" required />
+            </div>
           </div>
         </div>
         <div class="form-row">
           <div class="field">
             <label for="whatsapp">WhatsApp *</label>
-            <input type="tel" id="whatsapp" required />
+            <div class="phone-group">
+              <select id="whatsappCode" class="phone-code-select" aria-label="WhatsApp country code"></select>
+              <input type="tel" id="whatsapp" placeholder="1712345678" required />
+            </div>
           </div>
         </div>
         <div class="form-row">

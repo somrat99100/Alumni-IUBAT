@@ -6,11 +6,24 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { uploadToCloudinary } from "./cloudinary.js";
 import { toast, escapeHtml } from "./main.js";
+import { buildCountryCodeSelect, splitPhoneNumber, joinPhoneNumber } from "./country-codes.js";
 
 let jobHistory = [];
 let photoFile = null;
 let uid = null;
 let myFullName = ""; // used as the "aboutName" on approval notifications
+
+// Snapshot of the currently-live (approved) data, captured in init() before
+// any edits happen. Used to decide whether this save is the FIRST time the
+// profile is being edited since it was last approved — if so, that snapshot
+// gets stored as `previousApproved` so the admin review queue can show
+// exactly what changed (see js/admin.js).
+let originalStatus = null;
+let originalPublicData = null;
+let originalPrivateData = null;
+
+buildCountryCodeSelect(document.getElementById("phoneCode"), "+880");
+buildCountryCodeSelect(document.getElementById("whatsappCode"), "+880");
 
 async function init() {
   const user = await window.requireAuth();
@@ -39,6 +52,9 @@ async function init() {
   const data = publicSnap.data();
   const priv = privateSnap.exists() ? privateSnap.data() : {};
   myFullName = data.fullName || "";
+  originalStatus = data.status || "pending";
+  originalPublicData = data;
+  originalPrivateData = priv;
 
   renderStatusBanner(data.status, data.everApproved);
 
@@ -73,8 +89,12 @@ async function init() {
   document.getElementById("org").value = data.org || "";
   document.getElementById("researchArea").value = data.researchArea || "";
   document.getElementById("email").value = priv.email || "";
-  document.getElementById("phone").value = priv.phone || "";
-  document.getElementById("whatsapp").value = priv.whatsapp || "";
+  const phoneSplit = splitPhoneNumber(priv.phone);
+  document.getElementById("phoneCode").value = phoneSplit.code;
+  document.getElementById("phone").value = phoneSplit.local;
+  const whatsappSplit = splitPhoneNumber(priv.whatsapp);
+  document.getElementById("whatsappCode").value = whatsappSplit.code;
+  document.getElementById("whatsapp").value = whatsappSplit.local;
   document.getElementById("facebookUrl").value = priv.facebookUrl || data.facebookUrl || "";
   document.getElementById("linkedinUrl").value = priv.linkedinUrl || data.linkedinUrl || "";
   document.getElementById("phonePublic").checked = data.visibility?.phone === "public";
@@ -202,8 +222,20 @@ document.getElementById("profileForm").addEventListener("submit", async (e) => {
       photoUrl = await uploadToCloudinary(photoFile);
     }
 
-    const phoneVal = document.getElementById("phone").value.trim();
-    const whatsappVal = document.getElementById("whatsapp").value.trim();
+    const phoneVal = joinPhoneNumber(document.getElementById("phoneCode").value, document.getElementById("phone").value);
+    const whatsappVal = joinPhoneNumber(document.getElementById("whatsappCode").value, document.getElementById("whatsapp").value);
+    if (!/^\+?[0-9]{7,15}$/.test(phoneVal)) {
+      toast("Enter a valid phone number for the selected country code.", "error");
+      btn.disabled = false;
+      btn.textContent = "Save changes";
+      return;
+    }
+    if (!/^\+?[0-9]{7,15}$/.test(whatsappVal)) {
+      toast("Enter a valid WhatsApp number for the selected country code.", "error");
+      btn.disabled = false;
+      btn.textContent = "Save changes";
+      return;
+    }
     const phonePublic = document.getElementById("phonePublic").checked;
     const whatsappPublic = document.getElementById("whatsappPublic").checked;
 
@@ -231,6 +263,32 @@ document.getElementById("profileForm").addEventListener("submit", async (e) => {
     };
     if (photoUrl) updates.photoUrl = photoUrl;
 
+    // If this profile is CURRENTLY live (approved) and is only now being
+    // edited for the first time since that approval, snapshot the
+    // still-live values before they get overwritten below. The admin
+    // review queue diffs this snapshot against the incoming pending values
+    // to show reviewers exactly what changed (js/admin.js). If the profile
+    // was already pending/rejected (i.e. this isn't the first edit since
+    // the last approval), leave any existing snapshot alone so the diff
+    // keeps comparing against the last version that was truly live.
+    if (originalStatus === "approved") {
+      updates.previousApproved = {
+        fullName: originalPublicData.fullName || "",
+        batch: originalPublicData.batch || "",
+        jobTitle: originalPublicData.jobTitle || "",
+        org: originalPublicData.org || "",
+        researchArea: originalPublicData.researchArea || "",
+        photoUrl: originalPublicData.photoUrl || "",
+        facebookUrl: originalPublicData.facebookUrl || "",
+        linkedinUrl: originalPublicData.linkedinUrl || "",
+        jobHistory: originalPublicData.jobHistory || [],
+        visibility: originalPublicData.visibility || {},
+        email: originalPrivateData.email || "",
+        phone: originalPrivateData.phone || "",
+        whatsapp: originalPrivateData.whatsapp || ""
+      };
+    }
+
     await updateDoc(doc(db, "alumni", uid), updates);
 
     await setDoc(doc(db, "alumni", uid, "private", "contact"), {
@@ -244,6 +302,11 @@ document.getElementById("profileForm").addEventListener("submit", async (e) => {
     toast("Changes saved and submitted for admin review.", "success");
     document.getElementById("statusBanner").innerHTML =
       `<span class="badge badge-pending">pending</span> <span class="muted">Your latest changes are pending admin review. The directory still shows your last approved version until this is reviewed.</span>`;
+
+    // Reflect the save locally so a second save later in the same page
+    // load doesn't re-snapshot (and overwrite) the previousApproved data
+    // that was just written above.
+    originalStatus = "pending";
   } catch (err) {
     toast(err.message || "Couldn't save changes.", "error");
     console.error(err);

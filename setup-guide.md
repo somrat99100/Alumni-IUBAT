@@ -36,7 +36,9 @@ All the files above are already written and included with this guide. Just fill 
 2. Click the web icon (`</>`) to register a web app and copy the config object — you'll paste it into `js/firebase-config.js`.
 3. Enable the services you need:
    - **Authentication → Sign-in method** → enable **Email/Password**.
+   - **Authentication → Sign-in method** → also enable **Phone**. This is used only during registration, to send a real SMS one-time code that proves the person actually owns the phone number they typed in (see §3c) — it never signs anyone in as a phone-auth user for real.
    - **Firestore Database → Create database** → start in **Production mode** (never "test mode," even temporarily — it leaves all data world-writable).
+   - **Authentication → Settings → Authorized domains** → make sure the domain you'll deploy to (e.g. `yourusername.github.io`) is listed — the invisible reCAPTCHA that Phone sign-in uses will fail on an unauthorized domain.
 
 **Skip Firebase Storage.** As of February 3, 2026, Firebase requires the paid Blaze plan (a card on file) just to provision or access a Storage bucket — even for small hobby usage. Auth and Firestore remain fully free on the Spark plan, so this project uses **Cloudinary** for alumni photo uploads instead (§3b) and never touches Firebase Storage at all.
 
@@ -72,6 +74,14 @@ The web `apiKey` is not a secret — it's fine for it to be visible in public JS
    ```
 That's it — `register.html` and `my-profile.html` already call this helper for photo uploads, so no other code changes are needed.
 
+## 3c. Set up EmailJS (approval emails + registration OTP codes)
+
+The admin queue and the registration form both send email through the same EmailJS account, but they use **two different templates**:
+
+1. If you haven't already, create a free account at [emailjs.com](https://www.emailjs.com/) and connect an Email Service (its id is `EMAILJS_SERVICE_ID` in the code) and grab your **Public Key** (Account → API Keys) — this is already wired into `admin.html`'s `emailjs.init(...)` call and now also into `register.html`'s.
+2. **Approval email template** (already referenced as `EMAILJS_TEMPLATE_ID` in `js/admin.js`) — just needs `{{to_email}}` and `{{to_name}}` variables.
+3. **New: OTP template** for the registration verification code — create a second template with `{{to_email}}`, `{{to_name}}`, and **`{{otp_code}}`** variables (e.g. body: "Hi {{to_name}}, your IUBAT Alumni Network verification code is {{otp_code}}. It's valid for a few minutes."). Copy its template id into `EMAILJS_OTP_TEMPLATE_ID` in `js/otp-verify.js`.
+
 ## 4. Data model
 
 ```
@@ -80,10 +90,15 @@ alumni/{uid}                     ← PUBLIC fields only
   jobHistory: [ { title, org, startDate, endDate } ],
   visibility: { phone: "public"|"private", whatsapp: "public"|"private" },
   status: "pending" | "approved" | "rejected",
+  everApproved: boolean,
+  previousApproved: { ...snapshot of the live values, see below } | (absent),
   createdAt, updatedAt
 
 alumni/{uid}/private/contact     ← SENSITIVE fields, gated subcollection
   email, phone, whatsapp, facebookUrl, linkedinUrl
+  (phone/whatsapp are stored WITH the country code, e.g. "+8801712345678" —
+  the register/edit forms populate this from a country-code dropdown + a
+  local-number box; js/country-codes.js does the joining/splitting)
 
 contactRequests/{fromUid}_{toUid}
   fromUid, toUid, purpose, message,
@@ -98,66 +113,13 @@ Keeping `admins/{uid}` as its own collection (rather than a field on the user do
 
 Contact-request docs are named `{fromUid}_{toUid}` on purpose — it lets both the app code and the security rules look up "does a request already exist between these two people" without needing a query.
 
+**`previousApproved`**: the first time someone edits a profile that's currently *approved*, `js/profile.js` copies the still-live values into this field before overwriting them, and flips `status` back to `pending` as before. The admin queue (`js/admin.js`) diffs `previousApproved` against the incoming pending values and shows a "What changed since last approval" list on that review card, so an admin doesn't have to guess what was edited. The moment an admin approves the new version, `js/admin.js` deletes this field — the approved data becomes the new baseline, and the field never lingers around once the doc is public-readable again.
+
 ## 5. Security rules (the most important part)
 
 ### Firestore rules
 
-Console → Firestore Database → **Rules**:
-
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-
-    function isSignedIn() {
-      return request.auth != null;
-    }
-    function isOwner(uid) {
-      return isSignedIn() && request.auth.uid == uid;
-    }
-    function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
-    }
-
-    match /alumni/{uid} {
-      // Public can only read APPROVED profiles; owner/admin can always read
-      allow read: if resource.data.status == "approved" || isOwner(uid) || isAdmin();
-
-      // Only the owner can create their own doc, and it must start pending
-      allow create: if isOwner(uid) && request.resource.data.status == "pending";
-
-      // Owner can update their own doc but can't change their own status;
-      // admin can update anything (including status)
-      allow update: if (isOwner(uid) && request.resource.data.status == resource.data.status)
-                    || isAdmin();
-
-      allow delete: if isAdmin();
-
-      match /private/contact {
-        // Read allowed for: the owner, an admin, or someone with an approved request
-        allow read: if isOwner(uid) || isAdmin() ||
-          (isSignedIn() &&
-           exists(/databases/$(database)/documents/contactRequests/$(request.auth.uid + '_' + uid)) &&
-           get(/databases/$(database)/documents/contactRequests/$(request.auth.uid + '_' + uid)).data.status == "approved");
-        allow write: if isOwner(uid) || isAdmin();
-      }
-    }
-
-    match /contactRequests/{id} {
-      allow create: if isSignedIn() && request.resource.data.fromUid == request.auth.uid;
-      allow read, update: if isSignedIn()
-                    && (resource.data.fromUid == request.auth.uid
-                        || resource.data.toUid == request.auth.uid
-                        || isAdmin());
-    }
-
-    match /admins/{uid} {
-      allow read: if isSignedIn();
-      allow write: if false; // only editable manually from the Firebase console
-    }
-  }
-}
-```
+Console → Firestore Database → **Rules** → paste in the full contents of `firestore.rules` from this repo (it's kept in sync with what the app actually needs — including validation for the `previousApproved` diff snapshot, notification docs, and the "resubmit for review" transition — rather than duplicated here where it could drift out of date).
 
 Test every rule change in the Rules Playground before deploying — it lets you simulate a request as a specific (or anonymous) user and see whether it's allowed, without needing real user accounts to test with.
 
@@ -190,10 +152,14 @@ Photo uploads go through Cloudinary (§3b) instead of Firebase Storage, so there
 
 ## 9. Before you consider it "done"
 
-- [ ] Firestore rules deployed in production mode, tested in the Rules Playground
+- [ ] Firestore rules from `firestore.rules` deployed in production mode, tested in the Rules Playground
 - [ ] Cloudinary unsigned upload preset created and its cloud name/preset pasted into `js/cloudinary.js`
 - [ ] Sensitive fields (email, phone, whatsapp, socials) live in `alumni/{uid}/private/contact`, never in the public doc
 - [ ] `admins` collection is manually managed in the console, not writable by any client
-- [ ] Authorized domains list in Firebase Auth matches your real deployed URL
+- [ ] Authentication → Sign-in method has both **Email/Password** and **Phone** enabled
+- [ ] Authorized domains list in Firebase Auth matches your real deployed URL (needed for both login redirects and the invisible reCAPTCHA used by phone verification)
+- [ ] EmailJS OTP template created with an `{{otp_code}}` variable, and its id pasted into `EMAILJS_OTP_TEMPLATE_ID` in `js/otp-verify.js`
 - [ ] `js/firebase-config.js` has your real project values (not the placeholders)
 - [ ] No API keys other than the public Firebase web config and Cloudinary cloud name appear anywhere in the code
+- [ ] Registered a fresh test account end-to-end and confirmed the "verify your contact info" dialog actually requires both a real email code and a real SMS code before the account gets created
+- [ ] Edited an already-approved test profile and confirmed the admin queue shows a "What changed since last approval" list on that card

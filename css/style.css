@@ -242,6 +242,23 @@ textarea { resize: vertical; min-height: 90px; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 640px) { .form-row { grid-template-columns: 1fr; } }
 
+/* ---------- Phone / WhatsApp country-code picker ---------- */
+.phone-group { display: flex; gap: 8px; }
+.phone-code-select { flex: 0 0 128px; width: 128px; }
+.phone-group input { flex: 1 1 auto; min-width: 0; }
+
+/* ---------- Admin "what changed" diff list ---------- */
+.diff-list { margin: 12px 0 0; padding: 0; list-style: none; }
+.diff-list li {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 8px 0; border-bottom: 1px dashed var(--border);
+  font-size: 0.88rem;
+}
+.diff-list li:last-child { border-bottom: none; }
+.diff-list .diff-label { font-weight: 600; color: var(--moss); }
+.diff-list .diff-old { color: var(--moss-soft); text-decoration: line-through; }
+.diff-list .diff-new { color: var(--leaf, #2f6d3f); font-weight: 600; }
+
 .auth-shell {
   min-height: calc(100vh - 64px);
   display: flex;
