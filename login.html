@@ -62,7 +62,20 @@
   import { toast } from "./js/main.js";
 
   const params = new URLSearchParams(location.search);
-  const next = params.get("next");
+  // Only ever navigate to a same-origin relative path here. `next` comes
+  // straight from the URL — anyone can craft a login link with
+  // ?next=javascript:... , and assigning that to location.href would
+  // execute it. Validating against location.origin blocks both that and
+  // plain phishing-style open redirects to other domains.
+  function safeNext(raw) {
+    if (!raw) return "my-profile.html";
+    try {
+      const url = new URL(raw, location.origin);
+      if (url.origin === location.origin) return url.pathname + url.search + url.hash;
+    } catch (_) { /* fall through to default below */ }
+    return "my-profile.html";
+  }
+  const next = safeNext(params.get("next"));
 
   document.getElementById("loginForm").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -73,7 +86,7 @@
     btn.textContent = "Logging in…";
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      location.href = next ? decodeURIComponent(next) : "my-profile.html";
+      location.href = next;
     } catch (err) {
       toast(friendlyError(err), "error");
       btn.disabled = false;

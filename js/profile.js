@@ -183,6 +183,15 @@ document.getElementById("profileForm").addEventListener("submit", async (e) => {
     toast("Enter a real LinkedIn profile URL, e.g. https://linkedin.com/in/yourname.", "error");
     return;
   }
+  // Email here is a separate free-text field (not the Firebase Auth login
+  // email), so it never goes through Auth's own validation — this is the
+  // only client-side check for it, backed up by isValidContact() in the
+  // Firestore rules as the real enforcement layer.
+  const emailVal = document.getElementById("email").value.trim().toLowerCase();
+  if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(emailVal)) {
+    toast("Enter a valid email address.", "error");
+    return;
+  }
 
   btn.disabled = true;
   btn.textContent = "Saving…";
@@ -225,7 +234,7 @@ document.getElementById("profileForm").addEventListener("submit", async (e) => {
     await updateDoc(doc(db, "alumni", uid), updates);
 
     await setDoc(doc(db, "alumni", uid, "private", "contact"), {
-      email: document.getElementById("email").value.trim(),
+      email: emailVal,
       phone: phoneVal,
       whatsapp: whatsappVal,
       facebookUrl: fbVal,
