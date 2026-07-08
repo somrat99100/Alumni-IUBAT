@@ -305,7 +305,7 @@ async function decide(reqId, status, fromUid) {
 // time they load any page (via the navbar bell in navbar-loader.js).
 async function notifyApproval(toUid, reqId) {
   try {
-    await addDoc(collection(db, "notifications"), {
+    const ref = await addDoc(collection(db, "notifications"), {
       toUid,
       type: "contact_approved",
       aboutUid: uid,
@@ -314,6 +314,7 @@ async function notifyApproval(toUid, reqId) {
       read: false,
       createdAt: serverTimestamp()
     });
+    console.log(`[notifications] created ${ref.id} for toUid=${toUid} aboutUid=${uid}`);
   } catch (err) {
     console.error("Couldn't create approval notification:", err);
   }
