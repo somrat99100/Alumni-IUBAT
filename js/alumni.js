@@ -1,7 +1,7 @@
 // js/alumni.js
 import { auth, db } from "./firebase-config.js";
 import {
-  collection, query, where, getDocs, doc, getDoc, setDoc, addDoc, serverTimestamp
+  collection, query, where, getDocs, doc, getDoc, setDoc, deleteDoc, addDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { toast, escapeHtml } from "./main.js";
@@ -97,7 +97,7 @@ function renderGrid(list) {
   empty.hidden = true;
   grid.innerHTML = list.map((a) => `
     <div class="alumni-card" data-uid="${a.uid}">
-      <img class="avatar" src="${a.photoUrl || "https://placehold.co/96x96/E4EEDF/1F2E22?text=%F0%9F%8C%B1"}" alt="" onerror="this.onerror=null;this.src='https://placehold.co/96x96/E4EEDF/1F2E22?text=%F0%9F%8C%B1';" />
+      <img class="avatar" src="${escapeHtml(a.photoUrl || "https://placehold.co/96x96/E4EEDF/1F2E22?text=%F0%9F%8C%B1")}" alt="" onerror="this.onerror=null;this.src='https://placehold.co/96x96/E4EEDF/1F2E22?text=%F0%9F%8C%B1';" />
       ${a.batch ? `<span class="batch-badge">Batch ${escapeHtml(a.batch)}</span>` : ""}
       <h3>${escapeHtml(a.fullName || "Unnamed")}</h3>
       ${a.jobTitle ? `<div class="job">${escapeHtml(a.jobTitle)}${a.org ? " · " + escapeHtml(a.org) : ""}</div>` : `<div class="meta">Agriculture Alumni</div>`}
@@ -186,7 +186,7 @@ async function openProfileModal(uid) {
   modal.innerHTML = `
     <button class="modal-close" id="closeProfileModal">✕</button>
     <div class="row gap-16">
-      <img class="avatar" style="width:64px;height:64px;" src="${alum.photoUrl || "https://placehold.co/64x64/E4EEDF/1F2E22?text=%F0%9F%8C%B1"}" alt="" onerror="this.onerror=null;this.src='https://placehold.co/64x64/E4EEDF/1F2E22?text=%F0%9F%8C%B1';" />
+      <img class="avatar" style="width:64px;height:64px;" src="${escapeHtml(alum.photoUrl || "https://placehold.co/64x64/E4EEDF/1F2E22?text=%F0%9F%8C%B1")}" alt="" onerror="this.onerror=null;this.src='https://placehold.co/64x64/E4EEDF/1F2E22?text=%F0%9F%8C%B1';" />
       <div>
         <h3 class="mb-0">${escapeHtml(alum.fullName || "Unnamed")}</h3>
         <div class="meta muted">Batch ${escapeHtml(alum.batch || "—")}</div>
@@ -202,7 +202,7 @@ async function openProfileModal(uid) {
   document.getElementById("closeProfileModal").addEventListener("click", () => overlay.hidden = true);
 
   const requestBtn = modal.querySelector("#requestContactBtn");
-  if (requestBtn) requestBtn.addEventListener("click", () => openRequestModal(alum));
+  if (requestBtn) requestBtn.addEventListener("click", () => openRequestModal(alum, requestDoc));
 }
 
 function renderJobHistory(history) {
@@ -382,7 +382,7 @@ async function notifyNewRequest(toUid, reqId) {
   }
 }
 
-function openRequestModal(alum) {
+function openRequestModal(alum, priorRequestDoc) {
   const overlay = document.getElementById("requestModalOverlay");
   const modal = document.getElementById("requestModal");
 
@@ -432,6 +432,17 @@ function openRequestModal(alum) {
       const purpose = document.querySelector('input[name="purpose"]:checked').value;
       const message = document.getElementById("requestMessage").value.trim();
       const reqId = `${currentUser.uid}_${alum.uid}`;
+
+      // Re-requesting after a rejection: the old doc must be deleted first
+      // (the security rules only allow the requester to delete it once
+      // rejected + the 30-day cooldown has passed). This turns the setDoc
+      // below into a genuine "create" instead of an "update" — which is
+      // what the rules require, since fromUid is never allowed to update
+      // an existing request (that's what stops self-approval).
+      if (priorRequestDoc && priorRequestDoc.status === "rejected") {
+        await deleteDoc(doc(db, "contactRequests", reqId));
+      }
+
       await setDoc(doc(db, "contactRequests", reqId), {
         fromUid: currentUser.uid,
         toUid: alum.uid,
