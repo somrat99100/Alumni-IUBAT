@@ -22,7 +22,28 @@ let allAlumni = [];
 let searchTerm = "";
 let batchFilterValue = "";
 
-onAuthStateChanged(auth, (user) => { currentUser = user; });
+// Used to auto-open a profile modal when arriving via a notification link
+// like alumni.html?view=<uid> — we need both auth state resolved (so
+// requestDoc/privateContact lookups work) and the directory loaded (so the
+// alum's data is available) before opening.
+let authResolved = false;
+let alumniLoaded = false;
+
+onAuthStateChanged(auth, (user) => {
+  currentUser = user;
+  authResolved = true;
+  maybeOpenFromQuery();
+});
+
+function maybeOpenFromQuery() {
+  if (!authResolved || !alumniLoaded) return;
+  const params = new URLSearchParams(location.search);
+  const viewUid = params.get("view");
+  if (!viewUid) return;
+  // Clean the URL immediately so a page refresh doesn't reopen the modal.
+  history.replaceState(null, "", location.pathname);
+  openProfileModal(viewUid);
+}
 
 async function loadAlumni() {
   const grid = document.getElementById("alumniGrid");
@@ -33,6 +54,8 @@ async function loadAlumni() {
     allAlumni.sort((a, b) => (b.batch || "").localeCompare(a.batch || "") || (a.fullName || "").localeCompare(b.fullName || ""));
     populateBatchFilter();
     renderGrid(allAlumni);
+    alumniLoaded = true;
+    maybeOpenFromQuery();
   } catch (err) {
     grid.innerHTML = `<p class="muted">Couldn't load the directory right now. Please refresh.</p>`;
     console.error(err);
@@ -246,20 +269,34 @@ function renderContactSection(alum, requestDoc, privateContact) {
   const vis = alum.visibility || {};
   const rows = [];
 
+  // "Unlocked" means this viewer is allowed to read private/contact per the
+  // Firestore rules — either it's their own profile, or they have an
+  // approved contact request. Governs the Phone/WhatsApp fallback below.
+  const isOwnProfile = currentUser && currentUser.uid === alum.uid;
+  const isApprovedRequester = requestDoc && requestDoc.status === "approved";
+  const unlocked = isOwnProfile || isApprovedRequester;
+
   // Facebook / LinkedIn: always public, shown first in the Contact list.
   rows.push(socialRow("Facebook", alum.facebookUrl, "social-btn-fb", "📘"));
   rows.push(socialRow("LinkedIn", alum.linkedinUrl, "social-btn-li", "💼"));
 
-  // Phone: unlocked directly if the alum made it public; otherwise locked.
+  // Phone: unlocked directly if the alum made it public. Otherwise, if the
+  // viewer has an approved request (or it's their own profile), fall back
+  // to the private phone. Still locked for everyone else.
   if (vis.phone === "public" && alum.publicPhone) {
     rows.push(contactRow("Phone", alum.publicPhone, `tel:${alum.publicPhone}`));
+  } else if (unlocked && privateContact?.phone) {
+    rows.push(contactRow("Phone", privateContact.phone, `tel:${privateContact.phone}`));
   } else {
     rows.push(lockedRow("Phone"));
   }
 
-  // WhatsApp: unlocked directly as a one-tap chat button if made public.
+  // WhatsApp: same pattern — public first, then approved/own-profile
+  // fallback to the private number, otherwise locked.
   if (vis.whatsapp === "public" && alum.publicWhatsapp) {
     rows.push(whatsappRow(alum.publicWhatsapp));
+  } else if (unlocked && privateContact?.whatsapp) {
+    rows.push(whatsappRow(privateContact.whatsapp));
   } else {
     rows.push(lockedRow("WhatsApp"));
   }
@@ -270,7 +307,7 @@ function renderContactSection(alum, requestDoc, privateContact) {
     return rows.join("");
   }
 
-  if (currentUser.uid === alum.uid) {
+  if (isOwnProfile) {
     if (privateContact?.email) {
       rows.push(contactRow("Email", privateContact.email, `mailto:${privateContact.email}`));
     } else {
