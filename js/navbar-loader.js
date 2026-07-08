@@ -146,13 +146,21 @@ if (root) {
     }).join("");
 
     list.querySelectorAll(".notif-item").forEach((el) => {
-      el.addEventListener("click", async () => {
+      el.addEventListener("click", async (e) => {
+        // Navigating via the raw <a href> immediately unloads this page,
+        // which can cancel the updateDoc network request before Firestore
+        // acknowledges it — leaving the notification permanently "unread"
+        // even though the user already viewed it. So: stop the default
+        // navigation, wait for the read-update to actually complete, then
+        // navigate ourselves.
+        e.preventDefault();
+        const destination = el.getAttribute("href");
         try {
           await updateDoc(doc(db, "notifications", el.dataset.id), { read: true });
         } catch (err) {
           console.error("Couldn't mark notification read:", err);
         }
-        // Navigation happens via the normal <a href>, no preventDefault needed.
+        location.href = destination;
       });
     });
   }
