@@ -1,7 +1,7 @@
 // js/alumni.js
 import { auth, db } from "./firebase-config.js";
 import {
-  collection, query, where, getDocs, doc, getDoc, setDoc, serverTimestamp
+  collection, query, where, getDocs, doc, getDoc, setDoc, deleteDoc, addDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { toast, escapeHtml } from "./main.js";
@@ -22,7 +22,28 @@ let allAlumni = [];
 let searchTerm = "";
 let batchFilterValue = "";
 
-onAuthStateChanged(auth, (user) => { currentUser = user; });
+// Used to auto-open a profile modal when arriving via a notification link
+// like alumni.html?view=<uid> — we need both auth state resolved (so
+// requestDoc/privateContact lookups work) and the directory loaded (so the
+// alum's data is available) before opening.
+let authResolved = false;
+let alumniLoaded = false;
+
+onAuthStateChanged(auth, (user) => {
+  currentUser = user;
+  authResolved = true;
+  maybeOpenFromQuery();
+});
+
+function maybeOpenFromQuery() {
+  if (!authResolved || !alumniLoaded) return;
+  const params = new URLSearchParams(location.search);
+  const viewUid = params.get("view");
+  if (!viewUid) return;
+  // Clean the URL immediately so a page refresh doesn't reopen the modal.
+  history.replaceState(null, "", location.pathname);
+  openProfileModal(viewUid);
+}
 
 async function loadAlumni() {
   const grid = document.getElementById("alumniGrid");
@@ -33,6 +54,8 @@ async function loadAlumni() {
     allAlumni.sort((a, b) => (b.batch || "").localeCompare(a.batch || "") || (a.fullName || "").localeCompare(b.fullName || ""));
     populateBatchFilter();
     renderGrid(allAlumni);
+    alumniLoaded = true;
+    maybeOpenFromQuery();
   } catch (err) {
     grid.innerHTML = `<p class="muted">Couldn't load the directory right now. Please refresh.</p>`;
     console.error(err);
@@ -74,7 +97,7 @@ function renderGrid(list) {
   empty.hidden = true;
   grid.innerHTML = list.map((a) => `
     <div class="alumni-card" data-uid="${a.uid}">
-      <img class="avatar" src="${a.photoUrl || "https://placehold.co/96x96/E4EEDF/1F2E22?text=%F0%9F%8C%B1"}" alt="" onerror="this.onerror=null;this.src='https://placehold.co/96x96/E4EEDF/1F2E22?text=%F0%9F%8C%B1';" />
+      <img class="avatar" src="${escapeHtml(a.photoUrl || "https://placehold.co/96x96/E4EEDF/1F2E22?text=%F0%9F%8C%B1")}" alt="" onerror="this.onerror=null;this.src='https://placehold.co/96x96/E4EEDF/1F2E22?text=%F0%9F%8C%B1';" />
       ${a.batch ? `<span class="batch-badge">Batch ${escapeHtml(a.batch)}</span>` : ""}
       <h3>${escapeHtml(a.fullName || "Unnamed")}</h3>
       ${a.jobTitle ? `<div class="job">${escapeHtml(a.jobTitle)}${a.org ? " · " + escapeHtml(a.org) : ""}</div>` : `<div class="meta">Agriculture Alumni</div>`}
@@ -163,7 +186,7 @@ async function openProfileModal(uid) {
   modal.innerHTML = `
     <button class="modal-close" id="closeProfileModal">✕</button>
     <div class="row gap-16">
-      <img class="avatar" style="width:64px;height:64px;" src="${alum.photoUrl || "https://placehold.co/64x64/E4EEDF/1F2E22?text=%F0%9F%8C%B1"}" alt="" onerror="this.onerror=null;this.src='https://placehold.co/64x64/E4EEDF/1F2E22?text=%F0%9F%8C%B1';" />
+      <img class="avatar" style="width:64px;height:64px;" src="${escapeHtml(alum.photoUrl || "https://placehold.co/64x64/E4EEDF/1F2E22?text=%F0%9F%8C%B1")}" alt="" onerror="this.onerror=null;this.src='https://placehold.co/64x64/E4EEDF/1F2E22?text=%F0%9F%8C%B1';" />
       <div>
         <h3 class="mb-0">${escapeHtml(alum.fullName || "Unnamed")}</h3>
         <div class="meta muted">Batch ${escapeHtml(alum.batch || "—")}</div>
@@ -179,7 +202,7 @@ async function openProfileModal(uid) {
   document.getElementById("closeProfileModal").addEventListener("click", () => overlay.hidden = true);
 
   const requestBtn = modal.querySelector("#requestContactBtn");
-  if (requestBtn) requestBtn.addEventListener("click", () => openRequestModal(alum));
+  if (requestBtn) requestBtn.addEventListener("click", () => openRequestModal(alum, requestDoc));
 }
 
 function renderJobHistory(history) {
@@ -246,20 +269,34 @@ function renderContactSection(alum, requestDoc, privateContact) {
   const vis = alum.visibility || {};
   const rows = [];
 
+  // "Unlocked" means this viewer is allowed to read private/contact per the
+  // Firestore rules — either it's their own profile, or they have an
+  // approved contact request. Governs the Phone/WhatsApp fallback below.
+  const isOwnProfile = currentUser && currentUser.uid === alum.uid;
+  const isApprovedRequester = requestDoc && requestDoc.status === "approved";
+  const unlocked = isOwnProfile || isApprovedRequester;
+
   // Facebook / LinkedIn: always public, shown first in the Contact list.
   rows.push(socialRow("Facebook", alum.facebookUrl, "social-btn-fb", "📘"));
   rows.push(socialRow("LinkedIn", alum.linkedinUrl, "social-btn-li", "💼"));
 
-  // Phone: unlocked directly if the alum made it public; otherwise locked.
+  // Phone: unlocked directly if the alum made it public. Otherwise, if the
+  // viewer has an approved request (or it's their own profile), fall back
+  // to the private phone. Still locked for everyone else.
   if (vis.phone === "public" && alum.publicPhone) {
     rows.push(contactRow("Phone", alum.publicPhone, `tel:${alum.publicPhone}`));
+  } else if (unlocked && privateContact?.phone) {
+    rows.push(contactRow("Phone", privateContact.phone, `tel:${privateContact.phone}`));
   } else {
     rows.push(lockedRow("Phone"));
   }
 
-  // WhatsApp: unlocked directly as a one-tap chat button if made public.
+  // WhatsApp: same pattern — public first, then approved/own-profile
+  // fallback to the private number, otherwise locked.
   if (vis.whatsapp === "public" && alum.publicWhatsapp) {
     rows.push(whatsappRow(alum.publicWhatsapp));
+  } else if (unlocked && privateContact?.whatsapp) {
+    rows.push(whatsappRow(privateContact.whatsapp));
   } else {
     rows.push(lockedRow("WhatsApp"));
   }
@@ -270,7 +307,7 @@ function renderContactSection(alum, requestDoc, privateContact) {
     return rows.join("");
   }
 
-  if (currentUser.uid === alum.uid) {
+  if (isOwnProfile) {
     if (privateContact?.email) {
       rows.push(contactRow("Email", privateContact.email, `mailto:${privateContact.email}`));
     } else {
@@ -316,7 +353,36 @@ function renderContactSection(alum, requestDoc, privateContact) {
   return rows.join("");
 }
 
-function openRequestModal(alum) {
+// Creates an in-app notification for the alum who just received a new
+// contact request, so they see it via the navbar bell without needing to
+// manually check my-profile.html. Mirrors notifyApproval() in profile.js.
+async function notifyNewRequest(toUid, reqId) {
+  try {
+    let senderName = currentUser.displayName || "A fellow alum";
+    try {
+      const senderSnap = await getDoc(doc(db, "alumni", currentUser.uid));
+      if (senderSnap.exists() && senderSnap.data().fullName) {
+        senderName = senderSnap.data().fullName;
+      }
+    } catch (_) {
+      // Fall back to the default name above if this lookup fails.
+    }
+
+    await addDoc(collection(db, "notifications"), {
+      toUid,
+      type: "contact_request_received",
+      aboutUid: currentUser.uid,
+      aboutName: senderName,
+      requestId: reqId,
+      read: false,
+      createdAt: serverTimestamp()
+    });
+  } catch (err) {
+    console.error("Couldn't create new-request notification:", err);
+  }
+}
+
+function openRequestModal(alum, priorRequestDoc) {
   const overlay = document.getElementById("requestModalOverlay");
   const modal = document.getElementById("requestModal");
 
@@ -366,6 +432,17 @@ function openRequestModal(alum) {
       const purpose = document.querySelector('input[name="purpose"]:checked').value;
       const message = document.getElementById("requestMessage").value.trim();
       const reqId = `${currentUser.uid}_${alum.uid}`;
+
+      // Re-requesting after a rejection: the old doc must be deleted first
+      // (the security rules only allow the requester to delete it once
+      // rejected + the 30-day cooldown has passed). This turns the setDoc
+      // below into a genuine "create" instead of an "update" — which is
+      // what the rules require, since fromUid is never allowed to update
+      // an existing request (that's what stops self-approval).
+      if (priorRequestDoc && priorRequestDoc.status === "rejected") {
+        await deleteDoc(doc(db, "contactRequests", reqId));
+      }
+
       await setDoc(doc(db, "contactRequests", reqId), {
         fromUid: currentUser.uid,
         toUid: alum.uid,
@@ -374,6 +451,11 @@ function openRequestModal(alum) {
         status: "pending",
         createdAt: serverTimestamp()
       });
+
+      // Best-effort: never let a notification hiccup undo or block the
+      // request that already succeeded above.
+      notifyNewRequest(alum.uid, reqId);
+
       toast("Request sent.", "success");
       overlay.hidden = true;
       document.getElementById("profileModalOverlay").hidden = true;

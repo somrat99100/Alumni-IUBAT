@@ -4,6 +4,26 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Register as Alumni — IUBAT Agriculture Alumni Network</title>
+<meta name="description" content="Join the IUBAT Agriculture Alumni Network. Register as a College of Agricultural Sciences (CAS) graduate to connect with fellow alumni." />
+<meta name="robots" content="index, follow" />
+<link rel="canonical" href="https://somrat99100.github.io/Alumni-IUBAT/register.html" />
+<meta name="theme-color" content="#1F2E22" />
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+
+<!-- Open Graph -->
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="IUBAT Agriculture Alumni Network" />
+<meta property="og:title" content="Register as Alumni — IUBAT Agriculture Alumni Network" />
+<meta property="og:description" content="Join the IUBAT Agriculture Alumni Network. Register as a College of Agricultural Sciences (CAS) graduate to connect with fellow alumni." />
+<meta property="og:url" content="https://somrat99100.github.io/Alumni-IUBAT/register.html" />
+<meta property="og:image" content="https://somrat99100.github.io/Alumni-IUBAT/assets/og-image.png" />
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Register as Alumni — IUBAT Agriculture Alumni Network" />
+<meta name="twitter:description" content="Join the IUBAT Agriculture Alumni Network. Register as a College of Agricultural Sciences (CAS) graduate to connect with fellow alumni." />
+<meta name="twitter:image" content="https://somrat99100.github.io/Alumni-IUBAT/assets/og-image.png" />
+
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Work+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -101,11 +121,11 @@
         <p class="hint mt-8">Email, Facebook and LinkedIn always require an approved request. Phone and WhatsApp are private by default — you can make them public below.</p>
         <div class="toggle-row">
           <span>Show phone publicly</span>
-          <label class="switch"><input type="checkbox" id="phonePublic" /><span class="track"></span></label>
+          <label class="switch"><input type="checkbox" id="phonePublic" /><span class="switch-slider"></span></label>
         </div>
         <div class="toggle-row">
           <span>Show WhatsApp publicly</span>
-          <label class="switch"><input type="checkbox" id="whatsappPublic" /><span class="track"></span></label>
+          <label class="switch"><input type="checkbox" id="whatsappPublic" /><span class="switch-slider"></span></label>
         </div>
       </div>
 
@@ -147,10 +167,9 @@
   import { toast } from "./js/main.js";
 
   // Shown in the directory/profile whenever someone doesn't upload their own photo —
-  // generates a stable, initials-based avatar unique to each person's name.
+  // uses a fixed default avatar image hosted on Cloudinary.
   function defaultAvatarFor(name) {
-    const seed = encodeURIComponent(name || "IUBAT Alumni");
-    return `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundColor=6b9b5e&textColor=ffffff`;
+    return "https://res.cloudinary.com/db6r0up6r/image/upload/v1783349169/ChatGPT_Image_Jul_6_2026_08_45_32_PM_u8dcdf.png";
   }
 
   let photoFile = null;
@@ -241,7 +260,7 @@
       const fullName = document.getElementById("fullName").value.trim();
 
       // 2. Upload photo if provided (Cloudinary handles size/type limits server-side too).
-      //    If no photo was uploaded, fall back to an auto-generated avatar.
+      //    If no photo was uploaded, fall back to the default avatar image.
       setProgress(45, photoFile ? "Uploading photo…" : "Preparing profile…");
       let photoUrl = defaultAvatarFor(fullName);
       if (photoFile) {

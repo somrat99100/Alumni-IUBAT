@@ -24,8 +24,17 @@ onAuthStateChanged(auth, async (user) => {
       return;
     }
     if (level === "admin") {
-      const adminDoc = await getDoc(doc(db, "admins", user.uid));
-      if (!adminDoc.exists()) {
+      console.log("[auth-guard] Checking admin for UID:", user.uid);
+      try {
+        const adminDoc = await getDoc(doc(db, "admins", user.uid));
+        console.log("[auth-guard] admins doc exists:", adminDoc.exists(), adminDoc.data());
+        if (!adminDoc.exists()) {
+          console.log("[auth-guard] No admin doc found — redirecting to index.html");
+          location.href = "index.html";
+          return;
+        }
+      } catch (err) {
+        console.error("[auth-guard] Error reading admin doc:", err);
         location.href = "index.html";
         return;
       }

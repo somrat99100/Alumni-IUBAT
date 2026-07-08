@@ -1,7 +1,8 @@
 // js/profile.js
 import { db } from "./firebase-config.js";
 import {
-  doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs
+  doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs,
+  addDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { uploadToCloudinary } from "./cloudinary.js";
 import { toast, escapeHtml } from "./main.js";
@@ -9,6 +10,7 @@ import { toast, escapeHtml } from "./main.js";
 let jobHistory = [];
 let photoFile = null;
 let uid = null;
+let myFullName = ""; // used as the "aboutName" on approval notifications
 
 async function init() {
   const user = await window.requireAuth();
@@ -36,6 +38,7 @@ async function init() {
   }
   const data = publicSnap.data();
   const priv = privateSnap.exists() ? privateSnap.data() : {};
+  myFullName = data.fullName || "";
 
   renderStatusBanner(data.status, data.everApproved);
 
@@ -261,14 +264,14 @@ async function loadIncomingRequests(uid) {
           <p class="muted">${escapeHtml(r.message || "")}</p>
           ${r.status === "pending" ? `
             <div class="row gap-12 mt-16">
-              <button class="btn btn-primary btn-sm approve-btn" data-id="${d.id}">Approve</button>
+              <button class="btn btn-primary btn-sm approve-btn" data-id="${d.id}" data-from="${r.fromUid}">Approve</button>
               <button class="btn btn-danger btn-sm reject-btn" data-id="${d.id}">Decline</button>
             </div>` : ""}
         </div>`;
     }).join("");
 
     list.querySelectorAll(".approve-btn").forEach((btn) => {
-      btn.addEventListener("click", () => decide(btn.dataset.id, "approved"));
+      btn.addEventListener("click", () => decide(btn.dataset.id, "approved", btn.dataset.from));
     });
     list.querySelectorAll(".reject-btn").forEach((btn) => {
       btn.addEventListener("click", () => decide(btn.dataset.id, "rejected"));
@@ -279,14 +282,41 @@ async function loadIncomingRequests(uid) {
   }
 }
 
-async function decide(reqId, status) {
+async function decide(reqId, status, fromUid) {
   try {
     await updateDoc(doc(db, "contactRequests", reqId), { status, decidedAt: new Date() });
     toast(status === "approved" ? "Request approved." : "Request declined.", "success");
+
+    // Best-effort: never let a notification hiccup undo or block the
+    // approval that already succeeded above.
+    if (status === "approved" && fromUid) {
+      notifyApproval(fromUid, reqId);
+    }
+
     loadIncomingRequests(uid);
   } catch (err) {
     toast("Couldn't update the request.", "error");
     console.error(err);
+  }
+}
+
+// Creates an in-app notification for the person whose contact request was
+// just approved, so they see "your request was accepted — view now" next
+// time they load any page (via the navbar bell in navbar-loader.js).
+async function notifyApproval(toUid, reqId) {
+  try {
+    const ref = await addDoc(collection(db, "notifications"), {
+      toUid,
+      type: "contact_approved",
+      aboutUid: uid,
+      aboutName: myFullName || "An alum",
+      requestId: reqId,
+      read: false,
+      createdAt: serverTimestamp()
+    });
+    console.log(`[notifications] created ${ref.id} for toUid=${toUid} aboutUid=${uid}`);
+  } catch (err) {
+    console.error("Couldn't create approval notification:", err);
   }
 }
 

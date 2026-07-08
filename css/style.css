@@ -136,9 +136,8 @@ a:hover { text-decoration: underline; }
 .nav-brand .mark {
   width: 34px; height: 34px;
   border-radius: 50%;
-  background: var(--leaf-soft);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.1rem;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 .nav-links {
   display: flex;
@@ -152,6 +151,34 @@ a:hover { text-decoration: underline; }
 }
 .nav-links a:hover { color: var(--terracotta); text-decoration: none; }
 .nav-actions { display: flex; align-items: center; gap: 12px; }
+
+.notif-wrap { position: relative; }
+.notif-bell {
+  position: relative; background: none; border: none; cursor: pointer;
+  font-size: 1.2rem; line-height: 1; padding: 6px;
+}
+.notif-dot {
+  position: absolute; top: 0; right: 0; min-width: 16px; height: 16px;
+  padding: 0 3px; border-radius: 999px; background: var(--terracotta);
+  color: var(--paper); font-size: 0.65rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.notif-panel {
+  position: absolute; top: calc(100% + 10px); right: 0; width: 300px;
+  max-height: 360px; overflow-y: auto; background: var(--paper);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lift); z-index: 50; padding: 10px 0;
+}
+.notif-panel-title { font-weight: 700; padding: 4px 16px 8px; margin: 0; }
+.notif-empty { padding: 8px 16px; margin: 0; }
+.notif-item {
+  display: flex; gap: 10px; align-items: flex-start; padding: 10px 16px;
+  text-decoration: none; color: inherit; font-size: 0.88rem;
+}
+.notif-item:hover { background: var(--paper-dim); }
+.notif-item.notif-unread { background: var(--leaf-soft); }
+.notif-icon { flex-shrink: 0; }
+.notif-view { display: block; color: var(--moss); font-weight: 600; margin-top: 2px; }
 .nav-toggle { display: none; }
 
 @media (max-width: 800px) {
@@ -231,41 +258,29 @@ textarea { resize: vertical; min-height: 90px; }
   padding: 10px 0;
 }
 .switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
-.switch input { opacity: 0; width: 0; height: 0; }
-.switch .track {
-  position: absolute; inset: 0; background: var(--border);
-  border-radius: 999px; cursor: pointer; transition: background 0.2s;
+.switch input { display: none; }
+.switch-slider {
+  position: absolute; cursor: pointer; inset: 0;
+  background: var(--leaf-soft); border-radius: 12px;
+  transition: background 0.25s ease;
 }
-.switch .track::before {
-  content: ""; position: absolute; height: 18px; width: 18px;
-  left: 3px; top: 3px; background: #fff; border-radius: 50%;
-  transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+.switch-slider::before {
+  content: ""; position: absolute; top: 2px; left: 2px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: #fff; transition: transform 0.25s ease;
 }
-.switch input:checked + .track { background: var(--leaf); }
-.switch input:checked + .track::before { transform: translateX(20px); }
+.switch input:checked + .switch-slider { background: var(--leaf); }
+.switch input:checked + .switch-slider::before { transform: translateX(20px); }
 
-/* ---------- Radio group (purpose selector) ---------- */
-.radio-group { display: flex; flex-direction: column; gap: 10px; }
-.radio-option {
-  display: flex; align-items: center; gap: 10px;
-  border: 1.5px solid var(--border); border-radius: var(--radius-sm);
-  padding: 10px 14px; cursor: pointer; transition: border-color 0.15s;
-}
-.radio-option:hover { border-color: var(--leaf); }
-.radio-option input:checked ~ span { font-weight: 600; }
-.radio-option:has(input:checked) { border-color: var(--leaf); background: var(--leaf-soft); }
-
-/* ---------- Badges / pills / labels ---------- */
+/* ---------- Badge system ---------- */
 .badge {
   display: inline-flex; align-items: center; gap: 6px;
-  font-family: var(--font-mono); font-size: 0.72rem;
-  letter-spacing: 0.04em; text-transform: uppercase;
   padding: 4px 10px; border-radius: 999px;
+  font-family: var(--font-mono); font-size: 0.72rem; font-weight: 700;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  background: var(--leaf-soft); color: var(--leaf);
 }
-.badge-public { background: var(--leaf-soft); color: var(--moss); }
-.badge-pending { background: var(--terracotta-soft); color: var(--terracotta); }
-.badge-approved { background: var(--leaf-soft); color: var(--leaf); }
-.badge-rejected { background: var(--danger-soft); color: var(--danger); }
+.badge-accent { background: var(--terracotta-soft); color: var(--terracotta); }
 .badge-locked { background: var(--paper-dim); color: var(--moss-soft); }
 
 .growth-ring {
@@ -434,7 +449,7 @@ textarea { resize: vertical; min-height: 90px; }
   justify-content: center;
   background-image:
     linear-gradient(180deg, rgba(19,28,20,0.72) 0%, rgba(19,28,20,0.58) 45%, rgba(19,28,20,0.82) 100%),
-    url("https://images.unsplash.com/photo-1520052203542-d3095f1b6cf0?fm=jpg&q=70&w=2000&auto=format&fit=crop");
+    url("https://res.cloudinary.com/db6r0up6r/image/upload/v1783440975/ChatGPT_Image_Jul_7_2026_10_15_52_PM_norvbr.png");
   background-size: cover;
   background-position: center 35%;
   color: #fff;
@@ -458,7 +473,7 @@ textarea { resize: vertical; min-height: 90px; }
 @media (prefers-reduced-motion: reduce) { .hero-emoji { animation: none; } }
 
 .hero h1 { max-width: 780px; margin-left: auto; margin-right: auto; }
-.hero p.lead { max-width: 560px; margin: 0 auto 28px; color: var(--moss-soft); font-size: 1.1rem; }
+.hero p.lead { max-width: 560px; margin: 0 auto 28px; font-size: 1.1rem; }
 .hero-actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
 
 .section { padding: 64px 24px; }

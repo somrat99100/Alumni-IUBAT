@@ -23,7 +23,7 @@ async function loadQueue(status) {
         <div class="card mt-16">
           <div class="row" style="justify-content:space-between; align-items:flex-start;">
             <div class="row gap-16">
-              <img class="avatar" style="width:56px;height:56px;" src="${a.photoUrl || "https://placehold.co/56x56/E4EEDF/1F2E22?text=%F0%9F%8C%B1"}" alt="" onerror="this.onerror=null;this.src='https://placehold.co/56x56/E4EEDF/1F2E22?text=%F0%9F%8C%B1';" />
+              <img class="avatar" style="width:56px;height:56px;" src="${escapeHtml(a.photoUrl || "https://placehold.co/56x56/E4EEDF/1F2E22?text=%F0%9F%8C%B1")}" alt="" onerror="this.onerror=null;this.src='https://placehold.co/56x56/E4EEDF/1F2E22?text=%F0%9F%8C%B1';" />
               <div>
                 <h3 class="mb-0">${escapeHtml(a.fullName || "Unnamed")}</h3>
                 <div class="muted">Batch ${escapeHtml(a.batch || "—")} · Student ID ${escapeHtml(a.studentId || "—")}</div>
@@ -80,8 +80,8 @@ async function decide(uid, status) {
 // values (dashboard → Email Services / Email Templates / Account → API
 // Keys). The template just needs to expect {{to_email}} and {{to_name}}
 // variables. The public key is set via emailjs.init(...) in admin.html.
-const EMAILJS_SERVICE_ID = "YOUR_SERVICE_ID";
-const EMAILJS_TEMPLATE_ID = "YOUR_TEMPLATE_ID";
+const EMAILJS_SERVICE_ID = "service_axm0jjz";
+const EMAILJS_TEMPLATE_ID = "template_bumd2ed";
 
 async function notifyApproval(uid) {
   try {

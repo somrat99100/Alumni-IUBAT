@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /my-profile.html
+
+Sitemap: https://somrat99100.github.io/Alumni-IUBAT/sitemap.xml
